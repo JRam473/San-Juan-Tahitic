@@ -1,25 +1,23 @@
-// src/middleware/auth.ts
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
-dotenv.config();
+import { verifyToken } from '../utils/jwt';
 
-export const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ message: 'No token provided' });
+export interface AuthRequest extends Request {
+  user?: any;
+}
 
-  const token = authHeader.split(' ')[1];
-  const secret = process.env.JWT_SECRET;
+export const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
 
-  if (!secret) {
-    return res.status(500).json({ message: 'JWT secret not configured' });
+  if (!token) {
+    return res.status(401).json({ message: 'Token de acceso requerido' });
   }
 
   try {
-    const decoded = jwt.verify(token, secret) as any;
-    (req as any).userId = decoded.userId;
+    const decoded = verifyToken(token);
+    req.user = decoded;
     next();
-  } catch (err) {
-    return res.status(401).json({ message: 'Token inválido' });
+  } catch (error) {
+    return res.status(403).json({ message: 'Token inválido o expirado' });
   }
 };

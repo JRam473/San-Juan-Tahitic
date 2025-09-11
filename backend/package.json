@@ -7,7 +7,9 @@
     "dev": "nodemon src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "echo \"No test configured\" && exit 0"
+    "test": "echo \"No test configured\" && exit 0",
+    "test-db": "ts-node src/testDB.ts",
+    "check-env": "ts-node src/check-env.ts"
   },
   "keywords": [],
   "author": "",
