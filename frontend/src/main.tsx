@@ -14,7 +14,7 @@ import { HomePage } from './pages/HomePage';
 import { TourismSection } from './TourismSection';
 import { CultureSection } from '@/cultura/CultureSection';
 import { CommunitySection } from './pages/CommunitySection.tsx';
-import { GallerySection } from './GallerySection';
+import { GallerySection } from './pages/GallerySection.tsx';
 import { ContactSection } from './ContactSection';
 import { Footer } from './Footer';
 
