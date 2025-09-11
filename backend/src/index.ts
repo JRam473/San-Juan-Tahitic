@@ -3,6 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'path';
+import passport from 'passport';
 
 // Cargar variables de entorno PRIMERO, desde la raíz del proyecto
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -25,6 +26,7 @@ import photoRoutes from './routes/photoRoutes';
 import commentRoutes from './routes/commentRoutes';
 import reactionRoutes from './routes/reactionRoutes';
 import ratingRoutes from './routes/ratingRoutes';
+import { configureGoogleOAuth, checkGoogleConfig } from './utils/oauth';
 
 dotenv.config();
 
@@ -39,6 +41,11 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+// Configurar Passport y OAuth
+app.use(passport.initialize());
+configureGoogleOAuth();
+
+checkGoogleConfig();
 
 // Rutas
 app.use('/api/auth', authRoutes);

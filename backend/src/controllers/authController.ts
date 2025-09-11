@@ -6,11 +6,17 @@ import { User, CreateUserInput } from '../models/User';
 
 export const register = async (req: Request, res: Response) => {
   try {
+
+    console.log('Body de registro:', req.body); // ✅ Para debugging
     const { username, email, password }: CreateUserInput = req.body;
 
     // Validar que el password esté presente
-    if (!password) {
-      return res.status(400).json({ message: 'La contraseña es requerida' });
+    // Validaciones
+    if (!email || !password) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Email y contraseña son requeridos' 
+      });
     }
 
     // Verificar si el usuario ya existe
@@ -51,7 +57,18 @@ export const register = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
+
+    console.log('Body recibido:', req.body); // ✅ Para debugging
+    console.log('Headers:', req.headers); // ✅ Para debugging
     const { email, password } = req.body;
+
+    // Validar que los campos existan
+    if (!email || !password) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Email y contraseña son requeridos' 
+      });
+    }
 
     // Buscar usuario
     const result = await query('SELECT * FROM users WHERE email = $1', [email]);

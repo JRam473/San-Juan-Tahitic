@@ -18,8 +18,9 @@ import { GallerySection } from './pages/GallerySection.tsx';
 import { ContactSection } from './ContactSection';
 import { Footer } from './Footer';
 
-// 🔑 Importa tu AuthProvider
+// 🔑 Importa tu AuthProvider y la página de Login
 import { AuthProvider } from '@/hooks/useAuth'; 
+import { Login } from './pages/Login'; // Asegúrate de crear esta página
 
 const router = createBrowserRouter([
   {
@@ -32,7 +33,7 @@ const router = createBrowserRouter([
       { path: 'comunidad', element: <CommunitySection /> },
       { path: 'galeria', element: <GallerySection /> },
       { path: 'contacto', element: <ContactSection /> },
-      { path: 'footer', element: <Footer /> },
+      { path: 'login', element: <Login /> }, // 👈 Ahora dentro de App
     ],
   },
 ]);

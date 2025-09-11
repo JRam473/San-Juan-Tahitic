@@ -6,7 +6,10 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { Link } from 'react-router-dom';
 
 export const AuthButton = () => {
   const { user, profile, signOut, signInWithGoogle, loading } = useAuth();
@@ -19,28 +22,43 @@ export const AuthButton = () => {
     );
   }
 
-  if (user && profile) {
-    const displayName =
-      profile.full_name || profile.username || user.email.split('@')[0];
-    const avatarUrl = profile.avatar_url;
+  if (user) {
+    const displayName = profile?.full_name || 
+                       user.username || 
+                       user.email.split('@')[0];
+    
+    const avatarUrl = profile?.avatar_url || user.avatar_url;
 
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            className="ml-4 flex items-center space-x-2 bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white px-6 py-2 rounded-full shadow-lg transform hover:scale-105 transition-all duration-300"
+            variant="ghost"
+            className="ml-4 flex items-center space-x-2 bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white px-4 py-2 rounded-full shadow-lg transform hover:scale-105 transition-all duration-300"
           >
-            <Avatar className="h-6 w-6 border border-white/30">
+            <Avatar className="h-8 w-8 border-2 border-white/20">
               <AvatarImage src={avatarUrl || undefined} alt={displayName} />
-              <AvatarFallback>
-                {displayName.charAt(0).toUpperCase()}
+              <AvatarFallback className="bg-white/20">
+                {displayName?.charAt(0).toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
-            <span className="font-medium">{displayName}</span>
+            <span className="font-medium hidden md:block">{displayName}</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="mt-2">
-          <DropdownMenuItem onClick={signOut}>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link to="/profile">Perfil</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/settings">Configuración</Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem 
+            onClick={signOut}
+            className="text-red-600 focus:text-red-600"
+          >
             Cerrar Sesión
           </DropdownMenuItem>
         </DropdownMenuContent>
