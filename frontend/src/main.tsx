@@ -1,4 +1,4 @@
-// main.tsx - Corrección de rutas
+// main.tsx - Estructura final con MinimalLayout
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
@@ -7,8 +7,11 @@ import {
   RouterProvider,
 } from 'react-router-dom';
 
-// App principal
+// App principal (layout completo)
 import App from './App.tsx';
+
+// Layout mínimo para login
+import { MinimalLayout } from './MinimalLayout'; // 👈 Importar MinimalLayout
 
 // Rutas
 import { HomePage } from './pages/HomePage';
@@ -25,12 +28,12 @@ import { AuthProvider } from '@/hooks/useAuth';
 
 // Importar ProtectedRoute y ProfilePage (si los tienes)
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { ProfilePage } from './pages/ProfilePage'; // Descomenta si tienes esta página
+import { ProfilePage } from './pages/ProfilePage';
 
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <App />,
+    element: <App />, // 👈 Layout completo con navbar, footer, etc.
     children: [
       { index: true, element: <HomePage /> },
       { path: 'turismo', element: <TourismSection /> },
@@ -38,7 +41,6 @@ const router = createBrowserRouter([
       { path: 'comunidad', element: <CommunitySection /> },
       { path: 'galeria', element: <GallerySection /> },
       { path: 'contacto', element: <ContactSection /> },
-      { path: 'login', element: <Login /> }, // ✅ Login dentro de App (para que tenga la navegación)
       
       // 👇 Ruta protegida
       {
@@ -52,6 +54,14 @@ const router = createBrowserRouter([
     ],
   },
   {
+    path: '/login',
+    element: ( // 👈 Layout mínimo SOLO para login
+      <MinimalLayout>
+        <Login />
+      </MinimalLayout>
+    ),
+  },
+  {
     path: '/oauth-callback',
     element: <OAuthCallback />,
   },
@@ -59,7 +69,6 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {/* 🔑 Aquí envuelves toda tu app en AuthProvider */}
     <AuthProvider>
       <RouterProvider router={router} />
     </AuthProvider>

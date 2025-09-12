@@ -1,6 +1,6 @@
 // App.tsx
 import { Navigation } from './Navigation';
-import { ContactSection } from './ContactSection';
+
 import { Footer } from './Footer';
 import './index.css';
 import { Outlet, useLocation } from 'react-router-dom';
@@ -59,7 +59,7 @@ const pageBackgrounds: Record<string, string> = {
         </motion.div>
       </AnimatePresence>
 
-      <ContactSection />
+      
       <Footer />
     </div>
   );
