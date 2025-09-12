@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import api from '../lib/axios';
+
 
 // Interfaces basadas en lo que realmente devuelve tu backend
 interface User {
@@ -19,15 +20,19 @@ interface Profile {
   avatar_url?: string;
 }
 
-// Respuesta REAL de tu backend (según lo que vimos con curl)
-interface LoginResponse {
+// 🔥 CORRECCIÓN: Estructura REAL de respuesta del backend
+interface ApiResponse<T> {
+  success: boolean;
   message: string;
+  data: T;
+}
+
+interface LoginData {
   token: string;
   user: User;
 }
 
-interface RegisterResponse {
-  message: string;
+interface RegisterData {
   token: string;
   user: User;
 }
@@ -43,8 +48,9 @@ interface AuthContextType {
   signOut: () => void;
   signInWithGoogle: () => void;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, username?: string) => Promise<void>;
+  signUp: (email: string, password: string, username?: string) => Promise<{ success: boolean; message: string }>;
 }
+
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -53,25 +59,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Verificar autenticación al cargar
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  // En tu useAuth.ts, agrega esta función para cargar el usuario desde el token
-const loadUserFromToken = async (token: string) => {
+  // 🔥 CORRECCIÓN: Usar useCallback para evitar warning de useEffect
+const loadUserFromToken = useCallback(async (token: string) => {
   try {
-    const userResponse = await api.get<{ user: User }>('/api/auth/profile', {
+    const userResponse = await api.get<ApiResponse<{ user: User }>>('/api/auth/profile', { // 👈 Agregar /api
       headers: { Authorization: `Bearer ${token}` }
     });
-    setUser(userResponse.data.user);
     
-    // Intentar obtener el perfil
+    setUser(userResponse.data.data.user);
+    
     try {
-      const profileResponse = await api.get<ProfileResponse>('/api/profiles/me', {
+      const profileResponse = await api.get<ApiResponse<ProfileResponse>>('/api/profiles/me', { // 👈 Agregar /api
         headers: { Authorization: `Bearer ${token}` }
       });
-      setProfile(profileResponse.data.profile);
+      setProfile(profileResponse.data.data.profile);
     } catch {
       console.log('Perfil no encontrado');
     }
@@ -79,67 +80,112 @@ const loadUserFromToken = async (token: string) => {
     console.error('Error cargando usuario:', error);
     localStorage.removeItem('token');
   }
-};
+}, []);
 
-// Y modifica checkAuth para usar esta función
-const checkAuth = async () => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    await loadUserFromToken(token);
-  }
-  setLoading(false);
-};
+  // 🔥 CORRECCIÓN: Usar useCallback
+  const checkAuth = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      await loadUserFromToken(token);
+    }
+    setLoading(false);
+  }, [loadUserFromToken]);
 
-  const signIn = async (email: string, password: string) => {
-    try {
+  // Verificar autenticación al cargar
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]); // 🔥 AGREGAR checkAuth como dependencia
 
-      console.log('🔄 Intentando login con:', { email });
+const signIn = async (email: string, password: string) => {
+  try {
+    console.log('🔄 Intentando login con:', { email });
     
-    const response = await api.post<LoginResponse>('/auth/login', { email, password });
+    const response = await api.post<ApiResponse<LoginData>>('/api/auth/login', { // 👈 Agregar /api
+      email, 
+      password 
+    });
+    
     console.log('✅ Respuesta del backend:', response.data);
     
-    const { token, user: userData } = response.data;
-    console.log('📦 Token recibido:', token ? '✅' : '❌');
-    console.log('📦 User data:', userData);
+    const { token, user: userData } = response.data.data;
     
     localStorage.setItem('token', token);
     setUser(userData);
-      // Obtener perfil después de login
-      try {
-        const profileResponse = await api.get<ProfileResponse>('/profiles/me');
-        setProfile(profileResponse.data.profile);
-      } catch {
-        console.log('Perfil no encontrado');
-      }
-    } catch (error: any) {
-      console.error('Error completo en login:', error);
-      throw new Error(error.response?.data?.message || 'Error al iniciar sesión');
-    }
-  };
-
-  const signUp = async (email: string, password: string, username?: string) => {
+    
     try {
-      // 🔥 CORRECCIÓN: El backend devuelve { message, token, user } directamente
-      const response = await api.post<RegisterResponse>('/auth/register', { 
-        email, 
-        password, 
-        username 
+      const profileResponse = await api.get<ApiResponse<ProfileResponse>>('/api/profiles/me', { // 👈 Agregar /api
+        headers: { Authorization: `Bearer ${token}` }
       });
-      const { token, user: userData } = response.data;
-      
-      localStorage.setItem('token', token);
-      setUser(userData);
-    } catch (error: any) {
-      console.error('Error completo en registro:', error);
+      setProfile(profileResponse.data.data.profile);
+    } catch {
+      console.log('Perfil no encontrado');
+    }
+  } catch (error: any) {
+    console.error('❌ Error completo en login:', error);
+    console.error('❌ Respuesta de error:', error.response?.data);
+    throw new Error(error.response?.data?.message || 'Error al iniciar sesión');
+  }
+};
+
+// En useAuth.ts
+const checkEmailAvailability = async (email: string): Promise<boolean> => {
+  try {
+    const response = await api.get<ApiResponse<{ exists: boolean; available: boolean }>>(
+      `/api/auth/check-email/${encodeURIComponent(email)}`
+    );
+    return response.data.data.available;
+  } catch (error) {
+    console.error('Error verificando email:', error);
+    return false;
+  }
+};
+
+const signUp = async (email: string, password: string, username?: string) => {
+  try {
+    console.log('📤 Enviando registro:', { email, username });
+    
+    const response = await api.post<ApiResponse<RegisterData>>('/api/auth/register', { 
+      email, 
+      password, 
+      username 
+    });
+    
+    console.log('✅ Respuesta de registro:', response.data);
+    
+    const { token, user: userData } = response.data.data;
+    
+    localStorage.setItem('token', token);
+    setUser(userData);
+    
+    return { success: true, message: 'Registro exitoso' };
+    
+  } catch (error: any) {
+    console.error('❌ Error completo en registro:', error);
+    
+    // 🔥 MANEJO ESPECÍFICO DE ERRORES
+    if (error.response?.data?.message) {
+      // Error específico del backend
+      throw new Error(error.response.data.message);
+    } else if (error.response?.status === 400) {
+      // Error de validación
+      throw new Error('Datos de registro inválidos');
+    } else if (error.response?.status === 409) {
+      // Conflicto (usuario ya existe)
+      throw new Error('El usuario ya existe');
+    } else {
+      // Error genérico
       throw new Error(error.response?.data?.message || 'Error al registrarse');
     }
-  };
+  }
+};
 
   const signOut = () => {
     localStorage.removeItem('token');
     setUser(null);
     setProfile(null);
   };
+  // En useAuth.ts
+
 
   const signInWithGoogle = () => {
     const googleAuthUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/auth/google`;

@@ -13,7 +13,7 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
-    "skipLibCheck": true,
+    "skipLibCheck": true, // ✅ Esto es importante
     "typeRoots": ["./node_modules/@types", "./src/types"]
   },
   "include": ["src"],

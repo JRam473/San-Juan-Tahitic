@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Link, useNavigate } from 'react-router-dom'; // 👈 Agregar useNavigate aquí
+import { Link, useNavigate } from 'react-router-dom';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -12,29 +12,120 @@ export const Login = () => {
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [usernameError, setUsernameError] = useState('');
 
   const { signIn, signUp, signInWithGoogle } = useAuth();
+  const navigate = useNavigate();
 
-  const navigate = useNavigate(); // 👈 Agregar useNavigate
+  // 🔥 FUNCIÓN PARA VALIDAR EMAIL EN TIEMPO REAL
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setEmailError('Formato de email inválido');
+      return false;
+    }
+    setEmailError('');
+    return true;
+  };
+
+  // 🔥 FUNCIÓN PARA VALIDAR CONTRASEÑA
+  const validatePassword = (password: string): boolean => {
+    if (password.length < 6) {
+      setPasswordError('La contraseña debe tener al menos 6 caracteres');
+      return false;
+    }
+    setPasswordError('');
+    return true;
+  };
+
+  // 🔥 FUNCIÓN PARA VALIDAR USERNAME
+  const validateUsername = (username: string): boolean => {
+    if (!isLogin && username.length < 3) {
+      setUsernameError('El usuario debe tener al menos 3 caracteres');
+      return false;
+    }
+    setUsernameError('');
+    return true;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
+    // 🔥 VALIDACIONES EN FRONTEND ANTES DE ENVIAR
+    let isValid = true;
+
+    if (!validateEmail(email)) {
+      isValid = false;
+    }
+    
+    if (!validatePassword(password)) {
+      isValid = false;
+    }
+
+    if (!isLogin && !validateUsername(username)) {
+      isValid = false;
+    }
+
+    if (!isValid) {
+      setLoading(false);
+      return;
+    }
+
     try {
       if (isLogin) {
         await signIn(email, password);
-        navigate('/', { replace: true }); // 👈 Mejor que window.location
+        navigate('/', { replace: true });
       } else {
         await signUp(email, password, username);
-        navigate('/', { replace: true }); // 👈 Mejor que window.location
+        navigate('/', { replace: true });
       }
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  // 🔥 MANEJADORES DE CAMBIO CON VALIDACIÓN EN TIEMPO REAL
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+    setEmailError('');
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value);
+    setPasswordError('');
+  };
+
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUsername(e.target.value);
+    setUsernameError('');
+  };
+
+  // 🔥 VALIDAR AL PERDER EL FOCO (BLUR)
+  const handleEmailBlur = () => {
+    validateEmail(email);
+  };
+
+  const handlePasswordBlur = () => {
+    validatePassword(password);
+  };
+
+  const handleUsernameBlur = () => {
+    if (!isLogin) validateUsername(username);
+  };
+
+  const toggleLoginMode = () => {
+    setIsLogin(!isLogin);
+    // 🔥 LIMPIAR ERRORES AL CAMBIAR DE MODO
+    setError('');
+    setEmailError('');
+    setPasswordError('');
+    setUsernameError('');
   };
 
   return (
@@ -54,36 +145,62 @@ export const Login = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
-              <Input
-                placeholder="Nombre de usuario"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required={!isLogin}
-                disabled={loading}
-              />
+              <div>
+                <Input
+                  placeholder="Nombre de usuario"
+                  value={username}
+                  onChange={handleUsernameChange}
+                  onBlur={handleUsernameBlur}
+                  required={!isLogin}
+                  disabled={loading}
+                  className={usernameError ? 'border-red-500' : ''}
+                />
+                {usernameError && (
+                  <p className="text-red-500 text-sm mt-1">{usernameError}</p>
+                )}
+              </div>
             )}
             
-            <Input
-              type="email"
-              placeholder="Correo electrónico"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={loading}
-            />
+            <div>
+              <Input
+                type="email"
+                placeholder="Correo electrónico"
+                value={email}
+                onChange={handleEmailChange}
+                onBlur={handleEmailBlur}
+                required
+                disabled={loading}
+                className={emailError ? 'border-red-500' : ''}
+              />
+              {emailError && (
+                <p className="text-red-500 text-sm mt-1">{emailError}</p>
+              )}
+            </div>
             
-            <Input
-              type="password"
-              placeholder="Contraseña"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={loading}
-              minLength={6}
-            />
+            <div>
+              <Input
+                type="password"
+                placeholder="Contraseña"
+                value={password}
+                onChange={handlePasswordChange}
+                onBlur={handlePasswordBlur}
+                required
+                disabled={loading}
+                minLength={6}
+                className={passwordError ? 'border-red-500' : ''}
+              />
+              {passwordError && (
+                <p className="text-red-500 text-sm mt-1">{passwordError}</p>
+              )}
+              {!isLogin && !passwordError && (
+                <p className="text-gray-500 text-sm mt-1">
+                  Mínimo 6 caracteres
+                </p>
+              )}
+            </div>
             
             {error && (
-              <div className="text-red-600 text-sm p-2 bg-red-50 rounded-md">
+              <div className="text-red-600 text-sm p-2 bg-red-50 rounded-md border border-red-200">
                 {error}
               </div>
             )}
@@ -99,7 +216,7 @@ export const Login = () => {
             <div className="text-center text-sm">
               <button
                 type="button"
-                onClick={() => setIsLogin(!isLogin)}
+                onClick={toggleLoginMode}
                 className="text-blue-600 hover:underline"
                 disabled={loading}
               >

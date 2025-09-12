@@ -6,12 +6,10 @@ import { User, CreateUserInput } from '../models/User';
 
 export const register = async (req: Request, res: Response) => {
   try {
-
-    console.log('Body de registro:', req.body); // ✅ Para debugging
+    console.log('Body de registro:', req.body);
     const { username, email, password }: CreateUserInput = req.body;
 
-    // Validar que el password esté presente
-    // Validaciones
+    // Validaciones básicas
     if (!email || !password) {
       return res.status(400).json({ 
         success: false,
@@ -19,10 +17,45 @@ export const register = async (req: Request, res: Response) => {
       });
     }
 
-    // Verificar si el usuario ya existe
-    const userExists = await query('SELECT id FROM users WHERE email = $1', [email]);
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Formato de email inválido' 
+      });
+    }
+
+    // Validar fortaleza de contraseña
+    if (password.length < 6) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'La contraseña debe tener al menos 6 caracteres' 
+      });
+    }
+
+    // 🔥 VERIFICAR SI EL CORREO YA EXISTE
+    const userExists = await query(
+      'SELECT id, email FROM users WHERE email = $1 OR username = $2', 
+      [email, username]
+    );
+
     if (userExists.rows.length > 0) {
-      return res.status(400).json({ message: 'El usuario ya existe' });
+      const existingUser = userExists.rows[0];
+      
+      if (existingUser.email === email) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'El correo electrónico ya está registrado' 
+        });
+      }
+      
+      if (existingUser.username === username) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'El nombre de usuario ya está en uso' 
+        });
+      }
     }
 
     // Hash de la contraseña
@@ -30,31 +63,41 @@ export const register = async (req: Request, res: Response) => {
 
     // Crear usuario
     const result = await query(
-      'INSERT INTO users (username, email, password, is_verified) VALUES ($1, $2, $3, $4) RETURNING id, username, email, is_verified, created_at',
+      `INSERT INTO users (username, email, password, is_verified) 
+       VALUES ($1, $2, $3, $4) 
+       RETURNING id, username, email, is_verified, created_at`,
       [username, email, hashedPassword, false]
     );
 
     const user = result.rows[0];
 
     // Generar token
-    const token = generateToken({ userId: user.id, email: user.email });
+    const token = generateToken({ 
+      userId: user.id, 
+      email: user.email 
+    });
 
     res.status(201).json({
+      success: true,
       message: 'Usuario registrado exitosamente',
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        is_verified: user.is_verified
-      },
-      token
+      data: {
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          is_verified: user.is_verified
+        }
+      }
     });
   } catch (error) {
     console.error('Error en registro:', error);
-    res.status(500).json({ message: 'Error interno del servidor' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Error interno del servidor' 
+    });
   }
 };
-
 export const login = async (req: Request, res: Response) => {
   try {
 

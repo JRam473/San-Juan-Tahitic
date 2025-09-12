@@ -1,22 +1,21 @@
 import jwt from 'jsonwebtoken';
 
-// Definir una interfaz para el payload del token
 export interface JwtPayload {
   userId: string;
   email: string;
-  [key: string]: any;
 }
 
-export const generateToken = (payload: object): string => {
+export const generateToken = (payload: JwtPayload): string => {
   const secret = process.env.JWT_SECRET;
   
   if (!secret) {
     throw new Error('JWT_SECRET no está definido en las variables de entorno');
   }
 
-  return jwt.sign(payload, secret, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  } as jwt.SignOptions); // <-- Añadir el tipo SignOptions aquí
+  // ✅ SOLUCIÓN SIMPLE: Usar 'as any' para evitar problemas de tipos
+  return jwt.sign(payload as any, secret, { 
+    expiresIn: process.env.JWT_EXPIRES_IN || '7d'
+  } as any);
 };
 
 export const verifyToken = (token: string): JwtPayload => {
@@ -27,8 +26,19 @@ export const verifyToken = (token: string): JwtPayload => {
   }
 
   try {
-    return jwt.verify(token, secret) as JwtPayload;
+    const decoded = jwt.verify(token, secret) as { [key: string]: any };
+    
+    return {
+      userId: decoded.userId,
+      email: decoded.email
+    };
+    
   } catch (error) {
-    throw new Error('Token inválido o expirado');
+    if (error instanceof jwt.JsonWebTokenError) {
+      throw new Error('Token inválido');
+    } else if (error instanceof jwt.TokenExpiredError) {
+      throw new Error('Token expirado');
+    }
+    throw new Error('Error al verificar el token');
   }
 };
