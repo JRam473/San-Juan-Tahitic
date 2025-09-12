@@ -58,28 +58,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     checkAuth();
   }, []);
 
-  const checkAuth = async () => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        // 🔥 CORRECCIÓN: El backend devuelve { user } directamente
-        const userResponse = await api.get<{ user: User }>('/auth/profile');
-        setUser(userResponse.data.user);
-        
-        // Intentar obtener el perfil
-        try {
-          const profileResponse = await api.get<ProfileResponse>('/profiles/me');
-          setProfile(profileResponse.data.profile);
-        } catch {
-          console.log('Perfil no encontrado, se puede crear después');
-        }
-      } catch (error) {
-        console.error('Error verificando autenticación:', error);
-        localStorage.removeItem('token');
-      }
+  // En tu useAuth.ts, agrega esta función para cargar el usuario desde el token
+const loadUserFromToken = async (token: string) => {
+  try {
+    const userResponse = await api.get<{ user: User }>('/api/auth/profile', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setUser(userResponse.data.user);
+    
+    // Intentar obtener el perfil
+    try {
+      const profileResponse = await api.get<ProfileResponse>('/api/profiles/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setProfile(profileResponse.data.profile);
+    } catch {
+      console.log('Perfil no encontrado');
     }
-    setLoading(false);
-  };
+  } catch (error) {
+    console.error('Error cargando usuario:', error);
+    localStorage.removeItem('token');
+  }
+};
+
+// Y modifica checkAuth para usar esta función
+const checkAuth = async () => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    await loadUserFromToken(token);
+  }
+  setLoading(false);
+};
 
   const signIn = async (email: string, password: string) => {
     try {

@@ -9,10 +9,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // 👈 Agregar useNavigate
 
 export const AuthButton = () => {
   const { user, profile, signOut, signInWithGoogle, loading } = useAuth();
+  const navigate = useNavigate();
 
   if (loading) {
     return (
@@ -56,7 +57,10 @@ export const AuthButton = () => {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem 
-            onClick={signOut}
+            onClick={() => {
+              signOut();
+              navigate('/');
+            }}
             className="text-red-600 focus:text-red-600"
           >
             Cerrar Sesión
@@ -68,7 +72,7 @@ export const AuthButton = () => {
 
   return (
     <Button
-      onClick={signInWithGoogle}
+      onClick={() => navigate('/login')}
       className="ml-4 bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white px-6 py-2 rounded-full shadow-lg transform hover:scale-105 transition-all duration-300"
     >
       Iniciar Sesión

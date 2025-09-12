@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // 👈 Agregar useNavigate aquí
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -15,6 +15,8 @@ export const Login = () => {
 
   const { signIn, signUp, signInWithGoogle } = useAuth();
 
+  const navigate = useNavigate(); // 👈 Agregar useNavigate
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -23,11 +25,10 @@ export const Login = () => {
     try {
       if (isLogin) {
         await signIn(email, password);
-        // Redirigir al home después de login exitoso
-        window.location.href = '/';
+        navigate('/', { replace: true }); // 👈 Mejor que window.location
       } else {
         await signUp(email, password, username);
-        window.location.href = '/';
+        navigate('/', { replace: true }); // 👈 Mejor que window.location
       }
     } catch (err: any) {
       setError(err.message);
