@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { query } from '../utils/db';
-import { UserPhoto, CreateUserPhotoInput, UpdateUserPhotoInput } from '../models/UserPhoto';
+import { CreateUserPhotoInput, UpdateUserPhotoInput } from '../models/UserPhoto';
+import { buildPhotoUrl } from '../utils/photoUrl';
 
 export const getPhotos = async (req: Request, res: Response) => {
   try {
@@ -11,7 +12,13 @@ export const getPhotos = async (req: Request, res: Response) => {
       LEFT JOIN places p ON up.place_id = p.id 
       ORDER BY up.created_at DESC
     `);
-    res.json({ photos: result.rows });
+
+    const photosWithFullUrls = result.rows.map(photo => ({
+      ...photo,
+      photo_url: buildPhotoUrl(req, photo.photo_url),
+    }));
+
+    res.json({ photos: photosWithFullUrls });
   } catch (error) {
     console.error('Error obteniendo fotos:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
@@ -21,7 +28,7 @@ export const getPhotos = async (req: Request, res: Response) => {
 export const getPhotoById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     const result = await query(`
       SELECT up.*, u.username, p.name as place_name 
       FROM user_photos up 
@@ -34,7 +41,12 @@ export const getPhotoById = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Foto no encontrada' });
     }
 
-    res.json({ photo: result.rows[0] });
+    const photoWithFullUrl = {
+      ...result.rows[0],
+      photo_url: buildPhotoUrl(req, result.rows[0].photo_url),
+    };
+
+    res.json({ photo: photoWithFullUrl });
   } catch (error) {
     console.error('Error obteniendo foto:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
@@ -44,7 +56,7 @@ export const getPhotoById = async (req: Request, res: Response) => {
 export const getUserPhotos = async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
-    
+
     const result = await query(`
       SELECT up.*, u.username, p.name as place_name 
       FROM user_photos up 
@@ -54,7 +66,12 @@ export const getUserPhotos = async (req: Request, res: Response) => {
       ORDER BY up.created_at DESC
     `, [userId]);
 
-    res.json({ photos: result.rows });
+    const photosWithFullUrls = result.rows.map(photo => ({
+      ...photo,
+      photo_url: buildPhotoUrl(req, photo.photo_url),
+    }));
+
+    res.json({ photos: photosWithFullUrls });
   } catch (error) {
     console.error('Error obteniendo fotos del usuario:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
@@ -64,7 +81,7 @@ export const getUserPhotos = async (req: Request, res: Response) => {
 export const getPlacePhotos = async (req: Request, res: Response) => {
   try {
     const { placeId } = req.params;
-    
+
     const result = await query(`
       SELECT up.*, u.username, p.name as place_name 
       FROM user_photos up 
@@ -74,7 +91,12 @@ export const getPlacePhotos = async (req: Request, res: Response) => {
       ORDER BY up.created_at DESC
     `, [placeId]);
 
-    res.json({ photos: result.rows });
+    const photosWithFullUrls = result.rows.map(photo => ({
+      ...photo,
+      photo_url: buildPhotoUrl(req, photo.photo_url),
+    }));
+
+    res.json({ photos: photosWithFullUrls });
   } catch (error) {
     console.error('Error obteniendo fotos del lugar:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
@@ -85,8 +107,7 @@ export const createPhoto = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
     const { caption, place_id }: CreateUserPhotoInput = req.body;
-    
-    // En una implementación real, procesarías el archivo subido
+
     const photo_url = req.file ? `/uploads/${req.file.filename}` : null;
     const storage_path = req.file ? req.file.path : null;
 
@@ -99,7 +120,12 @@ export const createPhoto = async (req: Request, res: Response) => {
       [userId, photo_url, caption, place_id, storage_path]
     );
 
-    res.status(201).json({ message: 'Foto creada', photo: result.rows[0] });
+    const newPhoto = {
+      ...result.rows[0],
+      photo_url: buildPhotoUrl(req, result.rows[0].photo_url),
+    };
+
+    res.status(201).json({ message: 'Foto creada', photo: newPhoto });
   } catch (error) {
     console.error('Error creando foto:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
@@ -124,7 +150,12 @@ export const updatePhoto = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Foto no encontrada' });
     }
 
-    res.json({ message: 'Foto actualizada', photo: result.rows[0] });
+    const updatedPhoto = {
+      ...result.rows[0],
+      photo_url: buildPhotoUrl(req, result.rows[0].photo_url),
+    };
+
+    res.json({ message: 'Foto actualizada', photo: updatedPhoto });
   } catch (error) {
     console.error('Error actualizando foto:', error);
     res.status(500).json({ message: 'Error interno del servidor' });

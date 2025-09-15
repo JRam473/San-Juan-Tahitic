@@ -40,6 +40,7 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  isAuthenticated: boolean; // AÑADIR esta propiedad
   signOut: () => void;
   signInWithGoogle: () => void;
   signIn: (email: string, password: string) => Promise<void>;
@@ -52,6 +53,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false); // AÑADIR este estado
 
   // ✅ CORREGIDO: Función para cargar usuario desde token
   const loadUserFromToken = useCallback(async (token: string): Promise<void> => {
@@ -62,6 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // ✅ CORRECCIÓN: Acceder directamente según la interfaz ProfileResponse
       setUser(userResponse.data.user);
+      setIsAuthenticated(true); // ESTABLECER autenticación
       
       try {
         const profileResponse = await api.get<{ profile: Profile }>('/api/profiles/me', {
@@ -74,6 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error('Error cargando usuario:', error);
       localStorage.removeItem('token');
+      setIsAuthenticated(false); // ESTABLECER no autenticado
     }
   }, []);
 
@@ -82,6 +86,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const token = localStorage.getItem('token');
     if (token) {
       await loadUserFromToken(token);
+    } else {
+      setIsAuthenticated(false); // ESTABLECER no autenticado si no hay token
     }
     setLoading(false);
   }, [loadUserFromToken]);
@@ -112,6 +118,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       localStorage.setItem('token', token);
       setUser(userData);
+      setIsAuthenticated(true); // ESTABLECER autenticación
       
       try {
         const profileResponse = await api.get<{ profile: Profile }>('/api/profiles/me', {
@@ -123,6 +130,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error: unknown) {
       console.error('❌ Error completo en login:', error);
+      setIsAuthenticated(false); // ESTABLECER no autenticado
       if (error instanceof Error && 'response' in error) {
         const axiosError = error as { response?: { data?: { message?: string } } };
         throw new Error(axiosError.response?.data?.message || 'Error al iniciar sesión');
@@ -149,9 +157,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       localStorage.setItem('token', token);
       setUser(userData);
+      setIsAuthenticated(true); // ESTABLECER autenticación
       
     } catch (error: unknown) {
       console.error('❌ Error completo en registro:', error);
+      setIsAuthenticated(false); // ESTABLECER no autenticado
       
       if (error instanceof Error && 'response' in error) {
         const axiosError = error as { 
@@ -178,6 +188,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('token');
     setUser(null);
     setProfile(null);
+    setIsAuthenticated(false); // ESTABLECER no autenticado
   };
 
   const signInWithGoogle = (): void => {
@@ -191,6 +202,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       user, 
       profile, 
       loading, 
+      isAuthenticated, // AÑADIR al contexto
       signOut, 
       signInWithGoogle,
       signIn,

@@ -41,22 +41,36 @@ const LikeButton = ({
   isLiked?: boolean;
   isLoading?: boolean;
   isDisabled?: boolean;
-}) => (
-  <motion.button
-    type="button"
-    onClick={onClick}
-    disabled={isLoading || isDisabled}
-    whileTap={{ scale: 0.9 }}
-    className={`flex items-center gap-2 text-base font-medium transition-colors duration-300 ${
-      isLiked ? 'text-rose-500' : 'text-gray-500 hover:text-rose-500'
-    } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''} ${
-      isDisabled ? 'cursor-not-allowed opacity-60' : ''
-    }`}
-  >
-    <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-    {likeCount}
-  </motion.button>
-);
+}) => {
+  const [justClicked, setJustClicked] = useState(false);
+  
+  const handleClick = () => {
+    if (isLoading || isDisabled || justClicked) return;
+    
+    setJustClicked(true);
+    onClick?.();
+    
+    // Prevenir clicks dobles por 1 segundo
+    setTimeout(() => setJustClicked(false), 1000);
+  };
+  
+  return (
+    <motion.button
+      type="button"
+      onClick={handleClick}
+      disabled={isLoading || isDisabled || justClicked}
+      whileTap={{ scale: 0.9 }}
+      className={`flex items-center gap-2 text-base font-medium transition-colors duration-300 ${
+        isLiked ? 'text-rose-500' : 'text-gray-500 hover:text-rose-500'
+      } ${isLoading || justClicked ? 'opacity-50 cursor-not-allowed' : ''} ${
+        isDisabled ? 'cursor-not-allowed opacity-60' : ''
+      }`}
+    >
+      <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+      {likeCount}
+    </motion.button>
+  );
+};
 
 // --------------------- Confirm Modal ---------------------
 const ConfirmDialog = ({

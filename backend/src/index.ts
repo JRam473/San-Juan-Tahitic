@@ -41,6 +41,10 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// 🔥 AÑADIR ESTO: Servir archivos estáticos desde la carpeta uploads
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Configurar Passport y OAuth
 app.use(passport.initialize());
 configureGoogleOAuth();
@@ -64,6 +68,7 @@ app.use(errorHandler);
 connectDB().then(() => {
   app.listen(PORT, () => {
     console.log(`Servidor ejecutándose en el puerto ${PORT}`);
+    console.log(`Archivos estáticos disponibles en: http://localhost:${PORT}/uploads/`);
   });
 }).catch((error) => {
   console.error('Error al conectar con la base de datos:', error);

@@ -240,8 +240,9 @@ export const useComments = (placeId?: string) => {
   };
 
   // React to comment
-// React to comment - Versión mejorada con mejor manejo de errores
 const reactToComment = async (commentId: string) => {
+  console.log('Reaccionando al comentario:', commentId);
+  
   if (!user) {
     toast({
       title: "Autenticación requerida",
@@ -254,30 +255,21 @@ const reactToComment = async (commentId: string) => {
   try {
     setReactingComments(prev => ({ ...prev, [commentId]: true }));
     
-    const commentToUpdate = comments.find(c => c.id === commentId);
+    const commentToUpdate = findCommentWithReplies(comments, commentId);
     if (!commentToUpdate) return false;
+    console.log('Estado actual - user_has_reacted:', commentToUpdate.user_has_reacted);
+console.log('Estado actual - reaction_count:', commentToUpdate.reaction_count);
 
     const isCurrentlyLiked = commentToUpdate.user_has_reacted;
 
-    // Actualización optimista
-    setComments(prev =>
-      prev.map(comment =>
-        comment.id === commentId
-          ? {
-              ...comment,
-              reaction_count: isCurrentlyLiked 
-                ? Math.max(0, (comment.reaction_count || 1) - 1)
-                : (comment.reaction_count || 0) + 1,
-              user_has_reacted: !isCurrentlyLiked
-            }
-          : comment
-      )
-    );
+    // Verificación adicional para evitar conflicto
+    if (!isCurrentlyLiked) {
+      // Solo hacer actualización optimista si no hay reacción previa
+      setComments(prev => updateCommentsWithReaction(prev, commentId, true));
+    }
 
-    // Operación en la base de datos
     let response;
     if (isCurrentlyLiked) {
-      // Usar el nuevo endpoint por commentId
       response = await api.delete(`/api/reactions/comments/${commentId}`);
     } else {
       response = await api.post(`/api/reactions/comments/${commentId}`, { 
@@ -285,19 +277,20 @@ const reactToComment = async (commentId: string) => {
       });
     }
 
-    // Verificar respuesta
-    if (response.status >= 200 && response.status < 300) {
-      // Recargar comentarios para sincronizar con la base de datos
-      await fetchComments();
-      return true;
-    } else {
-      throw new Error(`Error HTTP: ${response.status}`);
-    }
+    console.log('Respuesta del servidor:', response.status, response.data);
     
-  } catch (err) {
-    // Rollback en caso de error
+    // Siempre recargar para sincronizar
     await fetchComments();
-    const errorMessage = err instanceof Error ? err.message : 'Error al procesar la reacción';
+    return true;
+    
+  } catch (err: any) {
+    console.error('Error en reactToComment:', err);
+    
+    // Rollback específico para este comentario
+    await fetchComments();
+    
+    const errorMessage = err.response?.data?.message || err.message || 'Error al procesar la reacción';
+    
     toast({
       title: "Error",
       description: errorMessage,
@@ -309,6 +302,39 @@ const reactToComment = async (commentId: string) => {
   }
 };
 
+// Helper functions
+const findCommentWithReplies = (comments: Comment[], commentId: string): Comment | null => {
+  for (const comment of comments) {
+    if (comment.id === commentId) return comment;
+    if (comment.replies) {
+      const foundInReplies = findCommentWithReplies(comment.replies, commentId);
+      if (foundInReplies) return foundInReplies;
+    }
+  }
+  return null;
+};
+
+const updateCommentsWithReaction = (comments: Comment[], commentId: string, add: boolean): Comment[] => {
+  return comments.map(comment => {
+    if (comment.id === commentId) {
+      return {
+        ...comment,
+        reaction_count: add 
+          ? (comment.reaction_count || 0) + 1
+          : Math.max(0, (comment.reaction_count || 1) - 1),
+        user_has_reacted: add
+      };
+    }
+    if (comment.replies) {
+      return {
+        ...comment,
+        replies: updateCommentsWithReaction(comment.replies, commentId, add)
+      };
+    }
+    return comment;
+  });
+};
+  
   // Helper functions
   const canEditComment = (comment: Comment): boolean => {
     return user?.id === comment.user_id;
