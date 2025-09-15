@@ -28,15 +28,51 @@ export const getProfileById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     
+    // Verificar que id no sea undefined
+    if (!id) {
+      return res.status(400).json({ message: 'ID de usuario requerido' });
+    }
+    
+    // Verificar si el id es "me" y obtener el perfil del usuario autenticado
+    if (id === 'me') {
+      const userId = (req as any).user.userId;
+      
+      const result = await query(`
+        SELECT u.id, u.username, u.email, u.avatar_url, u.created_at,
+               COUNT(DISTINCT c.id) as comment_count,
+               COUNT(DISTINCT p.id) as photo_count
+        FROM users u
+        LEFT JOIN comments c ON u.id = c.user_id
+        LEFT JOIN user_photos p ON u.id = p.user_id
+        WHERE u.id = $1
+        GROUP BY u.id
+      `, [userId]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: 'Usuario no encontrado' });
+      }
+
+      return res.json({ profile: result.rows[0] });
+    }
+
+    // Si no es "me", tratar como UUID normal
+    if (!isValidUUID(id)) {
+      return res.status(400).json({ message: 'ID de usuario inválido' });
+    }
+
     const result = await query(`
-      SELECT p.*, u.username, u.email 
-      FROM profiles p 
-      JOIN users u ON p.user_id = u.id 
-      WHERE p.id = $1
+      SELECT u.id, u.username, u.email, u.avatar_url, u.created_at,
+             COUNT(DISTINCT c.id) as comment_count,
+             COUNT(DISTINCT p.id) as photo_count
+      FROM users u
+      LEFT JOIN comments c ON u.id = c.user_id
+      LEFT JOIN user_photos p ON u.id = p.user_id
+      WHERE u.id = $1
+      GROUP BY u.id
     `, [id]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Perfil no encontrado' });
+      return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
     res.json({ profile: result.rows[0] });
@@ -45,6 +81,14 @@ export const getProfileById = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 };
+
+// Función auxiliar para validar UUID
+// Función auxiliar para validar UUID
+function isValidUUID(uuid: string | undefined): boolean {
+  if (!uuid) return false;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+}
 
 export const createProfile = async (req: Request, res: Response) => {
   try {
@@ -72,6 +116,12 @@ export const createProfile = async (req: Request, res: Response) => {
 export const updateProfile = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // Verificar que id no sea undefined
+    if (!id) {
+      return res.status(400).json({ message: 'ID de perfil requerido' });
+    }
+    
     const { full_name, bio, avatar_url }: UpdateProfileInput = req.body;
 
     const result = await query(
@@ -99,6 +149,11 @@ export const updateProfile = async (req: Request, res: Response) => {
 export const deleteProfile = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // Verificar que id no sea undefined
+    if (!id) {
+      return res.status(400).json({ message: 'ID de perfil requerido' });
+    }
 
     const result = await query('DELETE FROM profiles WHERE id = $1 RETURNING *', [id]);
 
@@ -112,3 +167,4 @@ export const deleteProfile = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 };
+

@@ -97,29 +97,7 @@ export const addPhotoReaction = async (req: Request, res: Response) => {
   }
 };
 
-export const removeCommentReaction = async (req: Request, res: Response) => {
-  try {
-    const { reactionId } = req.params;
-    const userId = (req as any).user.userId;
 
-    // Verificar que la reacción pertenece al usuario
-    const reactionCheck = await query('SELECT user_id FROM comment_reactions WHERE id = $1', [reactionId]);
-    if (reactionCheck.rows.length === 0) {
-      return res.status(404).json({ message: 'Reacción no encontrada' });
-    }
-
-    if (reactionCheck.rows[0].user_id !== userId) {
-      return res.status(403).json({ message: 'No tienes permiso para eliminar esta reacción' });
-    }
-
-    const result = await query('DELETE FROM comment_reactions WHERE id = $1 RETURNING *', [reactionId]);
-
-    res.json({ message: 'Reacción eliminada' });
-  } catch (error) {
-    console.error('Error eliminando reacción del comentario:', error);
-    res.status(500).json({ message: 'Error interno del servidor' });
-  }
-};
 
 export const removePhotoReaction = async (req: Request, res: Response) => {
   try {
@@ -141,6 +119,52 @@ export const removePhotoReaction = async (req: Request, res: Response) => {
     res.json({ message: 'Reacción eliminada' });
   } catch (error) {
     console.error('Error eliminando reacción de la foto:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+};
+
+
+// Nuevo endpoint para eliminar reacción por commentId y userId
+// Asegúrate de tener ambos endpoints para eliminar reacciones
+export const removeCommentReaction = async (req: Request, res: Response) => {
+  try {
+    const { reactionId } = req.params;
+    const userId = (req as any).user.userId;
+
+    const reactionCheck = await query('SELECT user_id FROM comment_reactions WHERE id = $1', [reactionId]);
+    if (reactionCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Reacción no encontrada' });
+    }
+
+    if (reactionCheck.rows[0].user_id !== userId) {
+      return res.status(403).json({ message: 'No tienes permiso para eliminar esta reacción' });
+    }
+
+    const result = await query('DELETE FROM comment_reactions WHERE id = $1 RETURNING *', [reactionId]);
+    res.json({ message: 'Reacción eliminada' });
+  } catch (error) {
+    console.error('Error eliminando reacción del comentario:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+};
+
+export const removeCommentReactionByComment = async (req: Request, res: Response) => {
+  try {
+    const { commentId } = req.params;
+    const userId = (req as any).user.userId;
+
+    const result = await query(
+      'DELETE FROM comment_reactions WHERE comment_id = $1 AND user_id = $2 RETURNING *',
+      [commentId, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Reacción no encontrada' });
+    }
+
+    res.json({ message: 'Reacción eliminada' });
+  } catch (error) {
+    console.error('Error eliminando reacción del comentario:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 };

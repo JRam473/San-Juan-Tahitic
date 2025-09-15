@@ -2,21 +2,38 @@ import { Request, Response } from 'express';
 import { query } from '../utils/db';
 import { Comment, CreateCommentInput, UpdateCommentInput } from '../models/Comment';
 
+// En tu commentController.ts - Modificar getComments y similares
 export const getComments = async (req: Request, res: Response) => {
   try {
-    const result = await query(`
-      SELECT c.*, u.username, u.avatar_url, p.name as place_name 
+    const userId = (req as any).user?.userId; // Obtener userId si está autenticado
+    
+    const queryStr = `
+      SELECT 
+        c.*, 
+        u.username, 
+        u.avatar_url, 
+        p.name as place_name,
+        COUNT(cr.id) as reaction_count,
+        ${userId ? `EXISTS(
+          SELECT 1 FROM comment_reactions cr2 
+          WHERE cr2.comment_id = c.id AND cr2.user_id = '${userId}'
+        ) as user_has_reacted` : 'false as user_has_reacted'}
       FROM comments c 
       JOIN users u ON c.user_id = u.id 
       LEFT JOIN places p ON c.place_id = p.id 
+      LEFT JOIN comment_reactions cr ON cr.comment_id = c.id
+      GROUP BY c.id, u.id, p.id
       ORDER BY c.created_at DESC
-    `);
+    `;
+
+    const result = await query(queryStr);
     res.json({ comments: result.rows });
   } catch (error) {
     console.error('Error obteniendo comentarios:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 };
+
 
 export const getCommentById = async (req: Request, res: Response) => {
   try {
@@ -137,17 +154,24 @@ export const deleteComment = async (req: Request, res: Response) => {
     const { id } = req.params;
     const userId = (req as any).user.userId;
 
+    console.log('Intentando eliminar comentario:', id, 'Usuario:', userId);
+
     // Verificar que el comentario pertenece al usuario
     const commentCheck = await query('SELECT user_id FROM comments WHERE id = $1', [id]);
+    console.log('Resultado de verificación:', commentCheck.rows);
+    
     if (commentCheck.rows.length === 0) {
+      console.log('Comentario no encontrado');
       return res.status(404).json({ message: 'Comentario no encontrado' });
     }
 
     if (commentCheck.rows[0].user_id !== userId) {
+      console.log('Permiso denegado. Usuario del comentario:', commentCheck.rows[0].user_id, 'Usuario actual:', userId);
       return res.status(403).json({ message: 'No tienes permiso para eliminar este comentario' });
     }
 
     const result = await query('DELETE FROM comments WHERE id = $1 RETURNING *', [id]);
+    console.log('Comentario eliminado:', result.rows[0]);
 
     res.json({ message: 'Comentario eliminado' });
   } catch (error) {
