@@ -1,8 +1,8 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
-import { ImageWithFallback } from './components/figma/ImageWithFallback';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { Mountain, Trees, Camera, Waves, Leaf, Sun, Star } from 'lucide-react';
 
-export function TourismSection() {
+export function AdventureActivities () {
   const attractions = [
     {
       icon: Mountain,

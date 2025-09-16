@@ -15,7 +15,7 @@ import { MinimalLayout } from './MinimalLayout'; // 👈 Importar MinimalLayout
 
 // Rutas
 import { HomePage } from './pages/HomePage';
-import { TourismSection } from './TourismSection';
+import { TourismSection } from './pages/TourismSection.tsx';
 import { CultureSection } from '@/cultura/CultureSection';
 import { CommunitySection } from './pages/CommunitySection.tsx';
 import { GallerySection } from './pages/GallerySection.tsx';
