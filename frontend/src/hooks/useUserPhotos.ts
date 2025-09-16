@@ -1,6 +1,5 @@
 // hooks/useUserPhotos.ts
-import { useState, useEffect } from 'react';
-import { useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
 import { useToast } from '@/hooks/use-toast';
 import api from '@/lib/axios';
@@ -30,9 +29,9 @@ export const useUserPhotos = () => {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
 
-
-
-  // Fetch all photos - CORREGIDO: usar la ruta correcta /api/photos
+  // =============================
+  // Fetch all photos
+  // =============================
   const fetchPhotos = useCallback(async () => {
     try {
       setLoading(true);
@@ -53,7 +52,9 @@ export const useUserPhotos = () => {
     }
   }, [toast]);
 
-  // Upload photo - CORREGIDO: usar la ruta correcta /api/photos
+  // =============================
+  // Upload photo
+  // =============================
   const uploadPhoto = async (file: File, caption: string) => {
     if (!isAuthenticated || !user) {
       toast({
@@ -64,7 +65,6 @@ export const useUserPhotos = () => {
       return false;
     }
 
-    // Validate file
     if (!file.type.startsWith('image/')) {
       toast({
         title: "Archivo inválido",
@@ -74,7 +74,7 @@ export const useUserPhotos = () => {
       return false;
     }
 
-    if (file.size > 5 * 1024 * 1024) { // 5MB
+    if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "Archivo muy grande",
         description: "La imagen debe ser menor a 5MB",
@@ -85,24 +85,18 @@ export const useUserPhotos = () => {
 
     try {
       setUploading(true);
-
       const formData = new FormData();
       formData.append('photo', file);
       formData.append('caption', caption);
 
-      // CORREGIDO: usar la ruta correcta /api/photos
-      const response = await api.post('/api/photos', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      // ✅ Eliminar headers manuales para que Axios agregue el token automáticamente
+      await api.post('/api/photos', formData);
 
       toast({
         title: "Foto subida",
         description: "Tu foto se ha subido exitosamente",
       });
 
-      // Refresh photos
       await fetchPhotos();
       return true;
     } catch (err: any) {
@@ -118,9 +112,41 @@ export const useUserPhotos = () => {
     }
   };
 
-  
+  // =============================
+  // Update photo (caption/description)
+  // =============================
+  const updatePhoto = async (photoId: string, caption: string) => {
+    if (!isAuthenticated || !user) {
+      toast({
+        title: "Autenticación requerida",
+        description: "Debes iniciar sesión para editar fotos",
+        variant: "destructive",
+      });
+      return false;
+    }
 
-  // Delete photo - CORREGIDO: usar la ruta correcta /api/photos
+    try {
+      await api.put(`/api/photos/${photoId}`, { caption });
+      toast({
+        title: "Foto actualizada",
+        description: "La descripción de tu foto se ha actualizado exitosamente",
+      });
+      await fetchPhotos();
+      return true;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Error al actualizar la foto';
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  // =============================
+  // Delete photo
+  // =============================
   const deletePhoto = async (photoId: string) => {
     if (!isAuthenticated || !user) {
       toast({
@@ -132,15 +158,11 @@ export const useUserPhotos = () => {
     }
 
     try {
-      // CORREGIDO: usar la ruta correcta /api/photos
       await api.delete(`/api/photos/${photoId}`);
-      
       toast({
         title: "Foto eliminada",
         description: "Tu foto se ha borrado exitosamente",
       });
-
-      // Refresh photos
       await fetchPhotos();
       return true;
     } catch (err: any) {
@@ -154,7 +176,9 @@ export const useUserPhotos = () => {
     }
   };
 
-  // React to photo (like/unlike) - CORREGIDO: usar la ruta correcta /api/reactions
+  // =============================
+  // React to photo (like/unlike)
+  // =============================
   const reactToPhoto = async (photoId: string) => {
     if (!isAuthenticated || !user) {
       toast({
@@ -166,20 +190,15 @@ export const useUserPhotos = () => {
     }
 
     try {
-      // Check if user already reacted
-      const hasReacted = hasUserReacted(photos.find(p => p.id === photoId));
-      
-      if (hasReacted) {
-        // Remove reaction - CORREGIDO: usar la ruta correcta
-        await api.delete(`/api/reactions/photos/${photoId}`);
+      const photo = photos.find(p => p.id === photoId);
+      const userReaction = photo?.reactions?.find(r => r.user_id === user.id);
+
+      if (userReaction) {
+        await api.delete(`/api/photos/reactions/${userReaction.id}`);
       } else {
-        // Add reaction - CORREGIDO: usar la ruta correcta
-        await api.post(`/api/reactions/photos/${photoId}`, {
-          reaction_type: 'like'
-        });
+        await api.post(`/api/photos/${photoId}/reactions`, { reaction_type: 'like' });
       }
 
-      // Refresh photos to get updated reactions
       await fetchPhotos();
       return true;
     } catch (err: any) {
@@ -193,13 +212,14 @@ export const useUserPhotos = () => {
     }
   };
 
-  // Check if user has reacted to a photo
+  // =============================
+  // Helpers
+  // =============================
   const hasUserReacted = (photo?: Photo): boolean => {
     if (!isAuthenticated || !user || !photo || !photo.reactions) return false;
     return photo.reactions.some(reaction => reaction.user_id === user.id);
   };
 
-  // Get reaction count for a photo
   const getReactionCount = (photo?: Photo): number => {
     if (!photo || !photo.reactions) return 0;
     return photo.reactions.length;
@@ -215,10 +235,11 @@ export const useUserPhotos = () => {
     uploading,
     error,
     uploadPhoto,
+    updatePhoto,
+    deletePhoto,
     reactToPhoto,
     hasUserReacted,
     getReactionCount,
     refetch: fetchPhotos,
-    deletePhoto
   };
 };

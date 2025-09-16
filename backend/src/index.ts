@@ -24,7 +24,6 @@ import profileRoutes from './routes/profileRoutes';
 import placeRoutes from './routes/placeRoutes';
 import photoRoutes from './routes/photoRoutes';
 import commentRoutes from './routes/commentRoutes';
-import reactionRoutes from './routes/reactionRoutes';
 import ratingRoutes from './routes/ratingRoutes';
 import { configureGoogleOAuth, checkGoogleConfig } from './utils/oauth';
 
@@ -58,7 +57,6 @@ app.use('/api/profiles', profileRoutes);
 app.use('/api/places', placeRoutes);
 app.use('/api/photos', photoRoutes);
 app.use('/api/comments', commentRoutes);
-app.use('/api/reactions', reactionRoutes);
 app.use('/api/ratings', ratingRoutes);
 
 // Manejo de errores

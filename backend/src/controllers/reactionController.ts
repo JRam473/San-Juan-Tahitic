@@ -92,10 +92,19 @@ export const addCommentReaction = async (req: Request, res: Response) => {
 };
 
 export const addPhotoReaction = async (req: Request, res: Response) => {
-  try {
+ try {
+    console.log('=== addPhotoReaction ===');
+    console.log('Params:', req.params);
+    console.log('Body:', req.body);
+    console.log('User:', (req as any).user);
+
     const userId = (req as any).user.userId;
     const { photoId } = req.params;
     const { reaction_type }: CreatePhotoReactionInput = req.body;
+
+    if (!reaction_type) {
+      return res.status(400).json({ message: 'El tipo de reacción es requerido' });
+    }
 
     // Verificar si ya existe una reacción del usuario a esta foto
     const existingReaction = await query(
