@@ -221,14 +221,15 @@ const Places = () => {
                 {/* Image */}
                 <div className="relative overflow-hidden">
                   <img 
-                    src={place.image_url || '/placeholder.svg'}
-                    alt={place.name}
-                    className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.currentTarget.src = '/placeholder.svg';
-                    }}
-                  />
+                  src={`${import.meta.env.VITE_API_URL}${place.image_url}` || '/placeholder.svg'}
+                  alt={place.name}
+                  className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
+                  loading="lazy"
+                  onError={(e) => {
+                    e.currentTarget.src = '/placeholder.svg';
+                  }}
+                />
+
                   <div className="absolute top-4 left-4">
                     <Badge className={getCategoryColor(place.category)}>
                       {place.category || 'Turismo'}

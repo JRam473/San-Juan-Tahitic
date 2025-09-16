@@ -106,7 +106,7 @@ export const Login = () => {
         animate={{ scale: [1, 1.05, 1], rotate: [0, 1, 0] }}
         transition={{ duration: 20, repeat: Infinity, repeatType: 'mirror', ease: 'linear' }}
       >
-        <img src="\public\images\puente.jpeg" alt="Puente" className="w-full h-full object-cover" />
+        <img src="\images\puente.jpeg" alt="Puente" className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/50 to-green-900/30" />
         {/* Partículas simples */}
         <motion.div

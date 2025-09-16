@@ -42,7 +42,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // 🔥 AÑADIR ESTO: Servir archivos estáticos desde la carpeta uploads
+
+
+// Las rutas deben quedar así:
+app.use('/images', express.static(path.join(__dirname, '../images')));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 
 // Configurar Passport y OAuth
 app.use(passport.initialize());
