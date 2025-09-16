@@ -1,5 +1,5 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { Users, Music, Palette, Book, Crown, Sparkles, Heart, Calendar } from 'lucide-react';
 
 export function CultureSection() {
@@ -129,9 +129,9 @@ export function CultureSection() {
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-orange-400/20 to-amber-600/20 rounded-3xl blur-2xl transform -rotate-3"></div>
               <ImageWithFallback
-                src="https://images.unsplash.com/photo-1533147670608-2a2f9775d0e0?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+                src="/images/cultura/Comunidad.jpg"
                 alt="Artesanías tradicionales de San Juan Tahitic"
-                className="relative w-full h-80 object-cover rounded-3xl shadow-2xl transform hover:rotate-1 transition-all duration-500"
+                className="relative w-full h-full object-cover rounded-3xl shadow-2xl transform hover:rotate-1 transition-all duration-500"
               />
               
               {/* Overlay decorativo */}

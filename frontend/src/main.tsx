@@ -16,7 +16,7 @@ import { MinimalLayout } from './MinimalLayout'; // 👈 Importar MinimalLayout
 // Rutas
 import { HomePage } from './pages/HomePage';
 import { TourismSection } from './pages/TourismSection.tsx';
-import { CultureSection } from '@/cultura/CultureSection';
+import { CulturePage } from './pages/CulturePage';
 import { CommunitySection } from './pages/CommunitySection.tsx';
 import { GallerySection } from './pages/GallerySection.tsx';
 import { ContactSection } from './ContactSection';
@@ -37,7 +37,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: 'turismo', element: <TourismSection /> },
-      { path: 'cultura', element: <CultureSection /> },
+      { path: 'cultura', element: <CulturePage /> },
       { path: 'comunidad', element: <CommunitySection /> },
       { path: 'galeria', element: <GallerySection /> },
       { path: 'contacto', element: <ContactSection /> },
