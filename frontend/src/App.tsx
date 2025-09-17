@@ -1,11 +1,11 @@
 // App.tsx
 import { Navigation } from './Navigation';
-
 import { Footer } from './Footer';
 import './index.css';
 import { Outlet, useLocation } from 'react-router-dom';
 import ScrollToTop from './ScrollToTop';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Toaster } from "@/components/ui/toaster"
 
 const pageVariants = {
   initial: { 
@@ -27,16 +27,15 @@ const pageTransition = {
 function App() {
   const location = useLocation();
 
-const pageBackgrounds: Record<string, string> = {
-  "/": "bg-gradient-to-b from-green-50 to-white",
-  "/turismo": "bg-gradient-to-b from-emerald-50 to-green-100",
-  "/cultura": "bg-gradient-to-b from-orange-50 to-yellow-100",
-  "/comunidad": "bg-gradient-to-b from-purple-50 to-indigo-100",
-  "/galeria": "bg-gradient-to-b from-pink-50 to-rose-100",
-  "/contacto": "bg-gradient-to-b from-blue-50 to-indigo-100",
-  "/login": "bg-gradient-to-br from-green-50 to-blue-100", // 👈 Agregar login
-};
-
+  const pageBackgrounds: Record<string, string> = {
+    "/": "bg-gradient-to-b from-green-50 to-white",
+    "/turismo": "bg-gradient-to-b from-emerald-50 to-green-100",
+    "/cultura": "bg-gradient-to-b from-orange-50 to-yellow-100",
+    "/comunidad": "bg-gradient-to-b from-purple-50 to-indigo-100",
+    "/galeria": "bg-gradient-to-b from-pink-50 to-rose-100",
+    "/contacto": "bg-gradient-to-b from-blue-50 to-indigo-100",
+    "/login": "bg-gradient-to-br from-green-50 to-blue-100",
+  };
 
   return (
     <div className={`min-h-screen transition-colors duration-700 ${pageBackgrounds[location.pathname] || "bg-gray-50"}`}>
@@ -59,8 +58,10 @@ const pageBackgrounds: Record<string, string> = {
         </motion.div>
       </AnimatePresence>
 
-      
       <Footer />
+      
+      {/* 👇 Agregar el Toaster aquí */}
+      <Toaster />
     </div>
   );
 }

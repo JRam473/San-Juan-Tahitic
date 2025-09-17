@@ -1,18 +1,62 @@
+// hooks/use-toast.ts
 import * as React from "react"
 
-import type {
-  ToastActionElement,
-  ToastProps,
-} from "@/components/ui/toast"
+// Definiciones de tipos extendidas
+export type ToastActionElement = React.ReactElement
+
+export type ToastVariant = 
+  | "default" 
+  | "destructive" 
+  | "success" 
+  | "warning" 
+  | "info" 
+  | "rating" 
+  | "comment" 
+  | "like" 
+  | "photo"
+
+export type ToastSize = "default" | "sm" | "lg"
+
+export type ToastPosition = 
+  | "top-right" 
+  | "top-left" 
+  | "top-center" 
+  | "bottom-right" 
+  | "bottom-left" 
+  | "bottom-center"
+
+export interface ToastProps {
+  id?: string
+  title?: React.ReactNode
+  description?: React.ReactNode
+  action?: ToastActionElement
+  variant?: ToastVariant
+  size?: ToastSize
+  position?: ToastPosition
+  duration?: number
+  icon?: React.ReactNode
+  showIcon?: boolean
+  className?: string
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_REMOVE_DELAY = 5000
 
+// Extender ToasterToast para incluir todas las nuevas propiedades
 type ToasterToast = ToastProps & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
+  variant?: ToastVariant
+  size?: ToastSize
+  position?: ToastPosition
+  duration?: number
+  icon?: React.ReactNode
+  showIcon?: boolean
+  className?: string
 }
 
 const actionTypes = {
@@ -55,7 +99,7 @@ interface State {
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
-const addToRemoveQueue = (toastId: string) => {
+const addToRemoveQueue = (toastId: string, duration?: number) => {
   if (toastTimeouts.has(toastId)) {
     return
   }
@@ -66,9 +110,16 @@ const addToRemoveQueue = (toastId: string) => {
       type: "REMOVE_TOAST",
       toastId: toastId,
     })
-  }, TOAST_REMOVE_DELAY)
+  }, duration || TOAST_REMOVE_DELAY)
 
   toastTimeouts.set(toastId, timeout)
+}
+
+const clearRemoveQueue = (toastId: string) => {
+  if (toastTimeouts.has(toastId)) {
+    clearTimeout(toastTimeouts.get(toastId))
+    toastTimeouts.delete(toastId)
+  }
 }
 
 export const reducer = (state: State, action: Action): State => {
@@ -90,13 +141,14 @@ export const reducer = (state: State, action: Action): State => {
     case "DISMISS_TOAST": {
       const { toastId } = action
 
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
       if (toastId) {
-        addToRemoveQueue(toastId)
+        clearRemoveQueue(toastId)
+        const toast = state.toasts.find(t => t.id === toastId)
+        addToRemoveQueue(toastId, toast?.duration)
       } else {
         state.toasts.forEach((toast) => {
-          addToRemoveQueue(toast.id)
+          clearRemoveQueue(toast.id)
+          addToRemoveQueue(toast.id, toast.duration)
         })
       }
 
@@ -114,11 +166,15 @@ export const reducer = (state: State, action: Action): State => {
     }
     case "REMOVE_TOAST":
       if (action.toastId === undefined) {
+        state.toasts.forEach((toast) => {
+          clearRemoveQueue(toast.id)
+        })
         return {
           ...state,
           toasts: [],
         }
       }
+      clearRemoveQueue(action.toastId)
       return {
         ...state,
         toasts: state.toasts.filter((t) => t.id !== action.toastId),
@@ -139,14 +195,15 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
-function toast({ ...props }: Toast) {
+function toast({ duration = TOAST_REMOVE_DELAY, ...props }: Toast) {
   const id = genId()
 
-  const update = (props: ToasterToast) =>
+  const update = (props: Partial<ToasterToast>) =>
     dispatch({
       type: "UPDATE_TOAST",
       toast: { ...props, id },
     })
+  
   const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
 
   dispatch({
@@ -154,6 +211,7 @@ function toast({ ...props }: Toast) {
     toast: {
       ...props,
       id,
+      duration,
       open: true,
       onOpenChange: (open) => {
         if (!open) dismiss()

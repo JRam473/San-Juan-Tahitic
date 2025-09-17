@@ -203,12 +203,12 @@ const ImageModal = ({
           <X className="w-8 h-8" />
         </button>
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
-  <img
-        src={src}
-        alt={alt}
-        className="max-w-screen max-h-screen object-contain rounded-lg shadow-lg transition-transform duration-300 hover:scale-105"
-      />
-</div>
+          <img
+            src={src}
+            alt={alt}
+            className="max-w-screen max-h-screen object-contain rounded-lg shadow-lg transition-transform duration-300 hover:scale-105"
+          />
+        </div>
 
         <div className="absolute bottom-4 left-4 text-white bg-black/50 px-3 py-1 rounded-lg">
           {alt}
@@ -219,12 +219,11 @@ const ImageModal = ({
 };
 
 const Places = () => {
-  const { places, loading, error, ratePlace, getUserRating, getRatingStats } = usePlaces();
+  const { places, loading, error, ratePlace, getUserRating, getRatingStats, isRating } = usePlaces();
   const { user } = useAuth();
   const { toast } = useToast();
   const [userRatings, setUserRatings] = useState<Record<string, number>>({});
   const [ratingStats, setRatingStats] = useState<Record<string, any>>({});
-  const [isRating, setIsRating] = useState<Record<string, boolean>>({});
   const [selectedImage, setSelectedImage] = useState<{ src: string; alt: string } | null>(null);
   const [theme, setTheme] = useState<'default' | 'nature' | 'beach' | 'cultural'>('default');
 
@@ -309,11 +308,9 @@ const Places = () => {
     }
   }, [places, getRatingStats]);
 
-  const handleRatingChange = async (placeId: string, newRating: number) => {
-    setIsRating(prev => ({ ...prev, [placeId]: true }));
-    
+  const handleRatingChange = async (placeId: string, placeName: string, newRating: number) => {
     try {
-      const success = await ratePlace(placeId, newRating);
+      const success = await ratePlace(placeId, newRating, placeName);
       if (success) {
         setUserRatings(prev => ({ ...prev, [placeId]: newRating }));
         
@@ -325,26 +322,30 @@ const Places = () => {
         } catch (error) {
           console.error('Error reloading stats:', error);
         }
-        
-        toast({
-          title: 'Calificación enviada',
-          description: '¡Gracias por tu calificación!',
-          className: themeClasses[theme].alert
-        });
       }
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Error al enviar la calificación',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsRating(prev => ({ ...prev, [placeId]: false }));
+      // El error ya se maneja en ratePlace, no es necesario mostrar otro toast aquí
     }
   };
 
   const handleImageClick = (src: string, alt: string) => {
     setSelectedImage({ src, alt });
+    toast({
+      title: 'Imagen expandida',
+      description: 'Haz clic en cualquier lugar o presiona ESC para cerrar',
+      duration: 3000,
+    });
+  };
+
+  // Toast para cuando hay un error al cargar una imagen
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>, placeName: string) => {
+    e.currentTarget.src = '/placeholder.svg';
+    toast({
+      title: 'Error al cargar imagen',
+      description: `No se pudo cargar la imagen de ${placeName}`,
+      variant: 'destructive',
+      duration: 5000,
+    });
   };
 
   const getCategoryColor = (category: string | null) => {
@@ -473,9 +474,7 @@ const Places = () => {
                       className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
                       loading="lazy"
                       onClick={() => handleImageClick(imageUrl, place.name)}
-                      onError={(e) => {
-                        e.currentTarget.src = '/placeholder.svg';
-                      }}
+                      onError={(e) => handleImageError(e, place.name)}
                     />
                     
                     <button
@@ -515,10 +514,10 @@ const Places = () => {
                       <div className="flex items-center justify-between">
                         <Rating 
                           rating={displayRating}
-                          onRatingChange={(rating) => handleRatingChange(place.id, rating)}
+                          onRatingChange={(rating) => handleRatingChange(place.id, place.name, rating)}
                           totalRatings={place.total_ratings || 0}
                           size="sm"
-                          readonly={!user || isCurrentlyRating}
+                          readonly={isCurrentlyRating}
                         />
                         {isCurrentlyRating && (
                           <div className="text-sm text-muted-foreground">

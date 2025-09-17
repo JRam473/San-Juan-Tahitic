@@ -1,4 +1,4 @@
-// main.tsx - Estructura final con MinimalLayout
+// main.tsx
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
@@ -11,7 +11,7 @@ import {
 import App from './App.tsx';
 
 // Layout mínimo para login
-import { MinimalLayout } from './MinimalLayout'; // 👈 Importar MinimalLayout
+import { MinimalLayout } from './MinimalLayout';
 
 // Rutas
 import { HomePage } from './pages/HomePage';
@@ -23,17 +23,20 @@ import { ContactSection } from './ContactSection';
 import { OAuthCallback } from './pages/OAuthCallback';
 import { Login } from './pages/Login';
 
-// 🔑 Importa tu AuthProvider
+// Importar AuthProvider
 import { AuthProvider } from '@/hooks/useAuth'; 
 
-// Importar ProtectedRoute y ProfilePage (si los tienes)
+// Importar ProtectedRoute y ProfilePage
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ProfilePage } from './pages/ProfilePage';
+
+// Importar ToastProvider
+import { ToastProvider } from '@/components/ui/toast'; // 👈 Importar ToastProvider
 
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <App />, // 👈 Layout completo con navbar, footer, etc.
+    element: <App />,
     children: [
       { index: true, element: <HomePage /> },
       { path: 'turismo', element: <TourismSection /> },
@@ -41,8 +44,6 @@ const router = createBrowserRouter([
       { path: 'comunidad', element: <CommunitySection /> },
       { path: 'galeria', element: <GallerySection /> },
       { path: 'contacto', element: <ContactSection /> },
-      
-      // 👇 Ruta protegida
       {
         path: 'perfil',
         element: (
@@ -55,7 +56,7 @@ const router = createBrowserRouter([
   },
   {
     path: '/login',
-    element: ( // 👈 Layout mínimo SOLO para login
+    element: (
       <MinimalLayout>
         <Login />
       </MinimalLayout>
@@ -69,8 +70,10 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AuthProvider>
-      <RouterProvider router={router} />
-    </AuthProvider>
+    <ToastProvider> {/* 👈 Envolver con ToastProvider */}
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </ToastProvider>
   </StrictMode>,
 );

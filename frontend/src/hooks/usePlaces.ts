@@ -52,6 +52,7 @@ export const usePlaces = () => {
   const [error, setError] = useState<string | null>(null);
   const [userRatings, setUserRatings] = useState<Record<string, UserRatingData>>({});
   const [ratingStats, setRatingStats] = useState<Record<string, RatingStats>>({});
+  const [isRating, setIsRating] = useState<Record<string, boolean>>({});
 
   const { user } = useAuth();
   const { toast } = useToast();
@@ -77,6 +78,8 @@ export const usePlaces = () => {
         title: 'Error',
         description: errorMessage,
         variant: 'destructive',
+        position: 'top-right', // 👈 Nueva propiedad
+        duration: 5000, // 👈 Nueva propiedad
       });
     } finally {
       setLoading(false);
@@ -94,10 +97,8 @@ export const usePlaces = () => {
         const response = await api.get<{ ratings: RatingItem[] }>(`/api/ratings/user/${user.id}`);
         const userRatings = response.data.ratings || [];
         
-        // Buscar la calificación para este lugar específico
         const ratingForPlace = userRatings.find((r: RatingItem) => r.place_id === placeId);
         
-        // Asegurar que el rating sea un número
         if (ratingForPlace && typeof ratingForPlace.rating === 'number') {
           return { 
             id: ratingForPlace.id, 
@@ -115,39 +116,53 @@ export const usePlaces = () => {
   );
 
   /**
-   * Calificar un lugar
+   * Calificar un lugar - FUNCIÓN MEJORADA con nuevos toasts
    */
   const ratePlace = useCallback(
-    async (placeId: string, rating: number) => {
+    async (placeId: string, rating: number, placeName?: string) => {
       if (!user) {
         toast({
-          title: 'Autenticación requerida',
-          description: 'Debes iniciar sesión para calificar lugares',
+          title: 'Inicia sesión para calificar',
+          description: 'Debes iniciar sesión para poder calificar lugares',
           variant: 'destructive',
+          position: 'bottom-right', // 👈 Mejor posición para acciones de usuario
+          duration: 4000,
         });
         return false;
       }
 
       try {
-        // Verificar si el usuario ya calificó este lugar
+        setIsRating(prev => ({ ...prev, [placeId]: true }));
+        
         const userRating = await getUserRating(placeId);
         
         let response;
         if (userRating && userRating.id) {
           // Actualizar calificación existente
           response = await api.put<ApiResponse<any>>(`/api/ratings/${userRating.id}`, { rating });
+          toast({
+            title: '⭐ Calificación actualizada',
+            description: `Tu calificación para ${placeName || 'este lugar'} ha sido actualizada a ${rating} estrellas`,
+            variant: 'rating', // 👈 Variante específica para calificaciones
+            position: 'bottom-right',
+            duration: 3000,
+            showIcon: true, // 👈 Mostrar icono
+          });
         } else {
           // Crear nueva calificación
           response = await api.post<ApiResponse<any>>('/api/ratings', { 
             place_id: placeId, 
             rating 
           });
+          toast({
+            title: '🎉 ¡Gracias por tu calificación!',
+            description: `Has calificado ${placeName || 'este lugar'} con ${rating} estrellas`,
+            variant: 'rating', // 👈 Variante específica para calificaciones
+            position: 'bottom-right',
+            duration: 4000,
+            showIcon: true,
+          });
         }
-
-        toast({
-          title: 'Calificación enviada',
-          description: response.data.message || 'Gracias por tu calificación',
-        });
 
         // Actualizar la lista de lugares con los nuevos promedios
         await fetchPlaces();
@@ -160,11 +175,16 @@ export const usePlaces = () => {
           'Error al calificar el lugar';
 
         toast({
-          title: 'Error',
+          title: '❌ Error al calificar',
           description: errorMessage,
           variant: 'destructive',
+          position: 'top-right',
+          duration: 5000,
+          showIcon: true,
         });
         return false;
+      } finally {
+        setIsRating(prev => ({ ...prev, [placeId]: false }));
       }
     },
     [user, toast, fetchPlaces, getUserRating]
@@ -180,10 +200,18 @@ export const usePlaces = () => {
         return response.data.stats || null;
       } catch (err) {
         console.error('Error fetching rating stats:', err);
+        // Opcional: mostrar toast de error
+        toast({
+          title: 'Error',
+          description: 'No se pudieron cargar las estadísticas',
+          variant: 'warning',
+          position: 'top-right',
+          duration: 3000,
+        });
         return null;
       }
     },
-    []
+    [toast] // 👈 Añadir toast como dependencia
   );
 
   // Limpiar datos cuando el usuario cierre sesión
@@ -191,6 +219,7 @@ export const usePlaces = () => {
     if (!user) {
       setUserRatings({});
       setRatingStats({});
+      setIsRating({});
     }
   }, [user]);
 
@@ -205,6 +234,7 @@ export const usePlaces = () => {
     ratePlace,
     getUserRating,
     getRatingStats,
+    isRating,
     refetch: fetchPlaces,
   };
 };
