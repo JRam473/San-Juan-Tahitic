@@ -11,7 +11,8 @@ import {
 import { 
   getPhotoReactions, 
   addPhotoReaction, 
-  removePhotoReaction 
+  removePhotoReactionByPhoto,
+  getPhotoReactionCount 
 } from '../controllers/reactionController';
 import { authenticateToken } from '../middleware/auth';
 import { upload } from '../middleware/upload';
@@ -29,7 +30,10 @@ router.delete('/:id', authenticateToken, deletePhoto);
 
 // Photo reactions
 router.get('/:photoId/reactions', getPhotoReactions);
+router.get('/:photoId/reaction-count', getPhotoReactionCount);
 router.post('/:photoId/reactions', authenticateToken, addPhotoReaction);
-router.delete('/reactions/:reactionId', authenticateToken, removePhotoReaction);
+
+// En tu archivo de rutas, agrega:
+router.delete('/:photoId/reactions', authenticateToken, removePhotoReactionByPhoto);
 
 export default router;
