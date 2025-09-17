@@ -10,53 +10,140 @@ import { Input } from '@/components/ui/input';
 import { Toast, ToastProvider, ToastTitle, ToastDescription, ToastViewport } from '@/components/ui/toast';
 
 // --------------------- Toast Notification ---------------------
-const FeedbackToast = ({ type, message }: { type: 'success' | 'error'; message: string }) => (
-  <Toast>
-    <div className="flex items-center gap-3">
-      {type === 'success' ? (
-        <CheckCircle2 className="text-green-500 w-6 h-6" />
-      ) : (
-        <AlertTriangle className="text-red-500 w-6 h-6" />
-      )}
-      <div>
-        <ToastTitle className="font-semibold">
-          {type === 'success' ? '¡Éxito!' : 'Ups, algo salió mal'}
-        </ToastTitle>
-        <ToastDescription>{message}</ToastDescription>
+const FeedbackToast = ({ type, message }: { type: 'success' | 'error' | 'warning' | 'info'; message: string }) => {
+  // Definir colores según el tipo
+  const getToastStyles = () => {
+    switch (type) {
+      case 'success':
+        return {
+          bgColor: 'bg-green-100 border-green-400',
+          iconColor: 'text-green-600',
+          textColor: 'text-green-800',
+          icon: <CheckCircle2 className="w-6 h-6" />
+        };
+      case 'error':
+        return {
+          bgColor: 'bg-red-100 border-red-400',
+          iconColor: 'text-red-600',
+          textColor: 'text-red-800',
+          icon: <AlertTriangle className="w-6 h-6" />
+        };
+      case 'warning':
+        return {
+          bgColor: 'bg-yellow-100 border-yellow-400',
+          iconColor: 'text-yellow-600',
+          textColor: 'text-yellow-800',
+          icon: <AlertTriangle className="w-6 h-6" />
+        };
+      case 'info':
+        return {
+          bgColor: 'bg-blue-100 border-blue-400',
+          iconColor: 'text-blue-600',
+          textColor: 'text-blue-800',
+          icon: <Info className="w-6 h-6" />
+        };
+      default:
+        return {
+          bgColor: 'bg-gray-100 border-gray-400',
+          iconColor: 'text-gray-600',
+          textColor: 'text-gray-800',
+          icon: <Info className="w-6 h-6" />
+        };
+    }
+  };
+
+  const styles = getToastStyles();
+
+  return (
+    <Toast>
+      <div className={`flex items-start gap-3 p-4 rounded-lg border ${styles.bgColor}`}>
+        <div className={styles.iconColor}>
+          {styles.icon}
+        </div>
+        <div>
+          <ToastTitle className={`font-semibold ${styles.textColor}`}>
+            {type === 'success' ? '¡Éxito!' : 
+             type === 'error' ? 'Error' :
+             type === 'warning' ? 'Advertencia' : 'Información'}
+          </ToastTitle>
+          <ToastDescription className={styles.textColor}>
+            {message}
+          </ToastDescription>
+        </div>
       </div>
-    </div>
-  </Toast>
-);
+    </Toast>
+  );
+};
 
 // --------------------- Confirm Modal ---------------------
 const ConfirmDialog = ({
   isOpen,
   onConfirm,
   onCancel,
-  message
+  message,
+  type = 'danger'
 }: {
   isOpen: boolean;
   onConfirm: () => void;
   onCancel: () => void;
   message: string;
-}) => (
-  <Dialog open={isOpen} onOpenChange={onCancel}>
-    <DialogContent className="max-w-md">
-      <DialogHeader>
-        <DialogTitle>¿Estás seguro?</DialogTitle>
-        <DialogDescription>{message}</DialogDescription>
-      </DialogHeader>
-      <DialogFooter className="flex gap-2">
-        <Button variant="outline" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={onConfirm}>
-          Eliminar
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-);
+  type?: 'danger' | 'warning' | 'info';
+}) => {
+  const getStyles = () => {
+    switch (type) {
+      case 'danger':
+        return {
+          button: 'bg-red-600 hover:bg-red-700 text-white',
+          icon: <AlertTriangle className="w-5 h-5 text-red-600" />,
+          title: 'text-red-700'
+        };
+      case 'warning':
+        return {
+          button: 'bg-yellow-600 hover:bg-yellow-700 text-white',
+          icon: <AlertTriangle className="w-5 h-5 text-yellow-600" />,
+          title: 'text-yellow-700'
+        };
+      case 'info':
+        return {
+          button: 'bg-blue-600 hover:bg-blue-700 text-white',
+          icon: <Info className="w-5 h-5 text-blue-600" />,
+          title: 'text-blue-700'
+        };
+      default:
+        return {
+          button: 'bg-red-600 hover:bg-red-700 text-white',
+          icon: <AlertTriangle className="w-5 h-5 text-red-600" />,
+          title: 'text-red-700'
+        };
+    }
+  };
+
+  const styles = getStyles();
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onCancel}>
+      <DialogContent className="max-w-md">
+        <DialogHeader className="flex flex-row items-center gap-3">
+          <div className={styles.title}>
+            {styles.icon}
+          </div>
+          <div>
+            <DialogTitle className={styles.title}>¿Estás seguro?</DialogTitle>
+            <DialogDescription>{message}</DialogDescription>
+          </div>
+        </DialogHeader>
+        <DialogFooter className="flex gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button className={styles.button} onClick={onConfirm}>
+            Eliminar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const GalleryUserSection = () => {
   const { photos, loading, uploading, uploadPhoto, updatePhoto, reactToPhoto, hasUserReacted, deletePhoto } = useUserPhotos();
@@ -69,7 +156,7 @@ const GalleryUserSection = () => {
   const [editCaption, setEditCaption] = useState('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning' | 'info'; message: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string } | null>(null);
 
   const dropRef = useRef<HTMLDivElement>(null);
@@ -121,7 +208,7 @@ const GalleryUserSection = () => {
     // Validar tamaño (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setToast({
-        type: 'error',
+        type: 'warning',
         message: 'La imagen no debe superar los 5MB.'
       });
       return;
@@ -130,7 +217,6 @@ const GalleryUserSection = () => {
     setUploadFile(file);
     setPreviewUrl(URL.createObjectURL(file));
   };
-
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -406,127 +492,149 @@ const GalleryUserSection = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Modal de foto seleccionada */}
-        <Dialog open={!!selectedPhoto} onOpenChange={() => setSelectedPhoto(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] p-0 bg-transparent shadow-none flex justify-center items-center">
-            <AnimatePresence>
-              {selectedPhoto && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.4 }}
-                  className="relative w-full max-w-[95vw] max-h-[95vh] rounded-2xl overflow-hidden backdrop-blur-lg bg-gradient-to-br from-indigo-50/30 via-purple-50/30 to-pink-50/30 border border-white/20 shadow-2xl flex flex-col items-center"
+        {/* Modal de foto seleccionada con efecto de pantalla completa */}
+        <AnimatePresence>
+          {selectedPhoto && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+              onClick={() => setSelectedPhoto(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.9 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.9 }}
+                className="relative w-full h-full max-w-screen max-h-screen flex flex-col items-center justify-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Botón cerrar */}
+                <button
+                  onClick={() => setSelectedPhoto(null)}
+                  className="absolute top-4 right-4 p-2 bg-black/60 rounded-full text-white z-20 hover:bg-black/80 transition"
                 >
-                  {/* Botón cerrar */}
-                  <button
-                    onClick={() => setSelectedPhoto(null)}
-                    className="absolute top-2 sm:top-4 right-2 sm:right-4 p-2 bg-black/40 rounded-full text-white z-20 hover:bg-black/60 transition"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                  <X className="w-6 h-6" />
+                </button>
 
-                  {/* Imagen */}
-                  <motion.img
-                    src={selectedPhoto.photo_url}
-                    alt={selectedPhoto.caption}
-                    className="w-full h-auto max-h-[80vh] object-contain rounded-t-2xl"
-                    initial={{ scale: 0.95, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.5 }}
-                  />
+                {/* Imagen con dimensiones máximas */}
+                <img
+                  src={selectedPhoto.photo_url}
+                  alt={selectedPhoto.caption}
+                  className="max-w-screen max-h-screen object-contain rounded-lg shadow-lg"
+                />
 
-                  {/* Caption y acciones */}
-                  <div className="p-6 w-full bg-gradient-to-t from-white/10 via-white/5 to-white/0 backdrop-blur-sm flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                    <div className="flex-1">
+                {/* Panel de controles en la parte inferior */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+                  <div className="max-w-4xl mx-auto">
+                    {/* Información de la foto */}
+                    <div className="mb-4 text-white">
                       {isEditMode ? (
                         <div className="flex flex-col gap-3">
                           <input
                             type="text"
                             value={editCaption}
                             onChange={(e) => setEditCaption(e.target.value)}
-                            className="w-full bg-white/30 backdrop-blur-sm border border-white/20 rounded-md p-2 text-black placeholder:text-black/50"
+                            className="w-full bg-white/20 backdrop-blur-sm border border-white/30 rounded-md p-3 text-white placeholder:text-white/70"
+                            placeholder="Escribe una descripción..."
                             autoFocus
                           />
                           <div className="flex justify-end gap-2">
-                            <Button onClick={handleSaveEdit} className="bg-purple-500 text-white hover:bg-purple-600">
+                            <Button 
+                              onClick={handleSaveEdit} 
+                              className="bg-purple-600 text-white hover:bg-purple-700"
+                            >
                               Guardar
                             </Button>
-                            <Button variant="outline" onClick={() => setIsEditMode(false)}>
+                            <Button 
+                              variant="outline" 
+                              onClick={() => setIsEditMode(false)}
+                              className="text-white border-white/30 hover:bg-white/10"
+                            >
                               Cancelar
                             </Button>
                           </div>
                         </div>
                       ) : (
                         <>
-                          <h3 className="text-xl font-semibold mb-1 text-black">{selectedPhoto.caption}</h3>
-                          <div className="flex items-center gap-2 text-gray-700 text-sm">
-                            <User className="w-4 h-4" />
-                            <span>{selectedPhoto.username}</span>
-                            <span>•</span>
-                            <Calendar className="w-4 h-4" />
-                            <span>{new Date(selectedPhoto.created_at).toLocaleDateString()}</span>
+                          <h3 className="text-xl font-semibold mb-2">{selectedPhoto.caption}</h3>
+                          <div className="flex items-center gap-4 text-sm text-white/80">
+                            <span className="flex items-center gap-1">
+                              <User className="w-4 h-4" />
+                              {selectedPhoto.username}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              {new Date(selectedPhoto.created_at).toLocaleDateString()}
+                            </span>
                           </div>
                         </>
                       )}
                     </div>
 
-                    <div className="flex gap-2 items-center">
-                      {user && selectedPhoto.user_id === user.id && !isEditMode && (
+                    {/* Botones de acción */}
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
                         <Button
                           variant="ghost"
-                          className="text-purple-600 hover:text-purple-700 text-sm flex items-center gap-1"
-                          onClick={() => setIsEditMode(true)}
+                          className={`text-white hover:bg-white/10 flex items-center gap-2 ${
+                            hasUserReacted(selectedPhoto) ? 'text-red-500' : ''
+                          }`}
+                          onClick={() => handleLike(selectedPhoto.id)}
+                          disabled={!isAuthenticated}
                         >
-                          <Edit3 className="w-4 h-4" />
-                          Editar
+                          <Heart
+                            className={`w-5 h-5 ${hasUserReacted(selectedPhoto) ? 'fill-current' : ''}`}
+                          />
+                          <span>{selectedPhoto.reactions?.length || 0}</span>
                         </Button>
-                      )}
+                      </div>
 
-                      {user && selectedPhoto.user_id === user.id && (
-                        <Button
-                          variant="ghost"
-                          className="text-red-600 hover:text-red-700 flex items-center gap-1"
-                          onClick={(e) => handleDelete(selectedPhoto.id, e)}
-                          title="Eliminar foto"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {user && selectedPhoto.user_id === user.id && !isEditMode && (
+                          <Button
+                            variant="ghost"
+                            className="text-white hover:bg-white/10 flex items-center gap-2"
+                            onClick={() => setIsEditMode(true)}
+                          >
+                            <Edit3 className="w-4 h-4" />
+                            Editar
+                          </Button>
+                        )}
 
-                      <Button
-                        variant="ghost"
-                        className={`flex items-center gap-1 ${
-                          hasUserReacted(selectedPhoto) ? 'text-red-600' : 'text-gray-700 hover:text-red-600'
-                        }`}
-                        onClick={() => handleLike(selectedPhoto.id)}
-                        disabled={!isAuthenticated}
-                      >
-                        <Heart
-                          className={`w-5 h-5 ${hasUserReacted(selectedPhoto) ? 'fill-current' : ''}`}
-                        />
-                        {selectedPhoto.reactions?.length || 0}
-                      </Button>
+                        {user && selectedPhoto.user_id === user.id && (
+                          <Button
+                            variant="ghost"
+                            className="text-red-400 hover:bg-red-400/10 flex items-center gap-2"
+                            onClick={(e) => handleDelete(selectedPhoto.id, e)}
+                            title="Eliminar foto"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Eliminar
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </DialogContent>
-        </Dialog>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </section>
 
       {/* Toast */}
       {toast && <FeedbackToast type={toast.type} message={toast.message} />}
       <ToastViewport />
 
-      {/* Confirm Modal */}
+      {/* Confirm Modal con tipo específico */}
       {confirmDelete && (
         <ConfirmDialog
           isOpen={!!confirmDelete}
           onConfirm={confirmDeleteAction}
           onCancel={() => setConfirmDelete(null)}
           message="Esta acción eliminará tu foto de forma permanente."
+          type="danger"
         />
       )}
     </ToastProvider>

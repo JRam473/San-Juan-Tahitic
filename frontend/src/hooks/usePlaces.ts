@@ -15,17 +15,43 @@ export interface Place {
   total_ratings: number;
 }
 
-export interface PlaceRating {
+export interface UserRatingData {
+  id: string;
+  rating: number;
+}
+
+export interface RatingStats {
+  average_rating: number;
+  total_ratings: number;
+  rating_distribution: Array<{
+    rating: number;
+    count: number;
+  }>;
+}
+
+interface ApiResponse<T> {
+  success: boolean;
+  message?: string;
+  places?: T[];
+  ratings?: any[];
+  stats?: RatingStats;
+  average_rating?: number;
+  total_ratings?: number;
+}
+
+interface RatingItem {
   id: string;
   place_id: string;
-  user_id: string;
   rating: number;
+  [key: string]: any;
 }
 
 export const usePlaces = () => {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userRatings, setUserRatings] = useState<Record<string, UserRatingData>>({});
+  const [ratingStats, setRatingStats] = useState<Record<string, RatingStats>>({});
 
   const { user } = useAuth();
   const { toast } = useToast();
@@ -38,7 +64,7 @@ export const usePlaces = () => {
       setLoading(true);
       setError(null);
 
-      const response = await api.get('/api/places');
+      const response = await api.get<{ places: Place[] }>('/api/places');
       setPlaces(response.data.places || []);
     } catch (err: any) {
       const errorMessage =
@@ -58,6 +84,37 @@ export const usePlaces = () => {
   }, [toast]);
 
   /**
+   * Obtener calificación del usuario para un lugar
+   */
+  const getUserRating = useCallback(
+    async (placeId: string): Promise<UserRatingData | null> => {
+      if (!user) return null;
+
+      try {
+        const response = await api.get<{ ratings: RatingItem[] }>(`/api/ratings/user/${user.id}`);
+        const userRatings = response.data.ratings || [];
+        
+        // Buscar la calificación para este lugar específico
+        const ratingForPlace = userRatings.find((r: RatingItem) => r.place_id === placeId);
+        
+        // Asegurar que el rating sea un número
+        if (ratingForPlace && typeof ratingForPlace.rating === 'number') {
+          return { 
+            id: ratingForPlace.id, 
+            rating: Number(ratingForPlace.rating) 
+          };
+        }
+        
+        return null;
+      } catch (err) {
+        console.error('Error fetching user rating:', err);
+        return null;
+      }
+    },
+    [user]
+  );
+
+  /**
    * Calificar un lugar
    */
   const ratePlace = useCallback(
@@ -72,25 +129,28 @@ export const usePlaces = () => {
       }
 
       try {
-        const response = await api.post(`/api/places/${placeId}/rate`, { rating });
+        // Verificar si el usuario ya calificó este lugar
+        const userRating = await getUserRating(placeId);
+        
+        let response;
+        if (userRating && userRating.id) {
+          // Actualizar calificación existente
+          response = await api.put<ApiResponse<any>>(`/api/ratings/${userRating.id}`, { rating });
+        } else {
+          // Crear nueva calificación
+          response = await api.post<ApiResponse<any>>('/api/ratings', { 
+            place_id: placeId, 
+            rating 
+          });
+        }
 
         toast({
           title: 'Calificación enviada',
           description: response.data.message || 'Gracias por tu calificación',
         });
 
-        // Actualizar el lugar calificado sin recargar toda la lista
-        setPlaces((prevPlaces) =>
-          prevPlaces.map((p) =>
-            p.id === placeId
-              ? {
-                  ...p,
-                  average_rating: response.data.average_rating ?? p.average_rating,
-                  total_ratings: response.data.total_ratings ?? p.total_ratings,
-                }
-              : p
-          )
-        );
+        // Actualizar la lista de lugares con los nuevos promedios
+        await fetchPlaces();
 
         return true;
       } catch (err: any) {
@@ -107,26 +167,32 @@ export const usePlaces = () => {
         return false;
       }
     },
-    [user, toast]
+    [user, toast, fetchPlaces, getUserRating]
   );
 
   /**
-   * Obtener calificación del usuario para un lugar
+   * Obtener estadísticas de calificaciones de un lugar
    */
-  const getUserRating = useCallback(
-    async (placeId: string): Promise<number> => {
-      if (!user) return 0;
-
+  const getRatingStats = useCallback(
+    async (placeId: string): Promise<RatingStats | null> => {
       try {
-        const response = await api.get(`/api/places/${placeId}/user-rating`);
-        return response.data.rating || 0;
+        const response = await api.get<{ stats: RatingStats }>(`/api/ratings/stats/place/${placeId}`);
+        return response.data.stats || null;
       } catch (err) {
-        console.error('Error fetching user rating:', err);
-        return 0;
+        console.error('Error fetching rating stats:', err);
+        return null;
       }
     },
-    [user]
+    []
   );
+
+  // Limpiar datos cuando el usuario cierre sesión
+  useEffect(() => {
+    if (!user) {
+      setUserRatings({});
+      setRatingStats({});
+    }
+  }, [user]);
 
   useEffect(() => {
     fetchPlaces();
@@ -138,6 +204,7 @@ export const usePlaces = () => {
     error,
     ratePlace,
     getUserRating,
+    getRatingStats,
     refetch: fetchPlaces,
   };
 };
