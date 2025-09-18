@@ -1,8 +1,9 @@
+// GalleryUserSection.tsx
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Heart, X, Trash2, UploadCloud, Edit3, User, Calendar, Image, AlertTriangle, CheckCircle2, Info, LogIn, Camera, MapPin } from 'lucide-react';
+import { Plus, Heart, X, Trash2, UploadCloud, Edit3, User, Calendar, Image, LogIn, Camera, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUserPhotos } from '@/hooks/useUserPhotos';
 import { useAuth } from '@/hooks/useAuth';
@@ -29,8 +30,6 @@ const InvitationBanner = () => {
     
     return () => clearInterval(interval);
   }, [invitationTexts.length]);
-
-  
 
   return (
     <motion.div 
@@ -112,8 +111,6 @@ const LoginButton = ({
   );
 };
 
-// ... (el resto del código permanece igual hasta el componente GalleryUserSection)
-
 const GalleryUserSection = () => {
   const { 
     photos, 
@@ -143,15 +140,10 @@ const GalleryUserSection = () => {
   const dropRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-
-   // =============================================
-  // AGREGAR ESTE USEEFFECT JUSTO AQUÍ
-  // =============================================
   useEffect(() => {
     if (selectedPhoto) {
       const updatedPhoto = photos.find(p => p.id === selectedPhoto.id);
       if (updatedPhoto) {
-        // Compara si hay cambios relevantes antes de actualizar
         if (updatedPhoto.reaction_count !== selectedPhoto.reaction_count || 
             JSON.stringify(updatedPhoto.reactions) !== JSON.stringify(selectedPhoto.reactions)) {
           setSelectedPhoto(updatedPhoto);
@@ -245,7 +237,13 @@ const GalleryUserSection = () => {
 
   const handleLike = async (photoId: string) => {
     if (!isAuthenticated) {
-      handleAuthRequired("reaccionar a las fotos");
+      toast({
+        title: "🔒 Autenticación requerida",
+        description: "Debes iniciar sesión para reaccionar a las fotos",
+        variant: "default",
+        position: "top-right",
+        duration: 4000,
+      });
       return;
     }
     await reactToPhoto(photoId);
@@ -422,7 +420,6 @@ const GalleryUserSection = () => {
                           className={`flex items-center gap-1 transition-colors duration-300 ${
                             hasUserReacted(photo) ? 'text-red-500' : 'text-white hover:text-red-400'
                           }`}
-                          disabled={!isAuthenticated || reacting === photo.id}
                         >
                           {reacting === photo.id ? (
                             <motion.div
@@ -651,7 +648,6 @@ const GalleryUserSection = () => {
                           hasUserReacted(selectedPhoto) ? 'text-red-500' : ''
                         }`}
                         onClick={() => handleLike(selectedPhoto.id)}
-                        disabled={!isAuthenticated || reacting === selectedPhoto.id}
                       >
                         {reacting === selectedPhoto.id ? (
                           <motion.div

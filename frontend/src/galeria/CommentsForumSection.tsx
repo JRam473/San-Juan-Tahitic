@@ -1,33 +1,14 @@
+// components/CommentsForumSection.tsx
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Heart, Edit3, Trash2, X, Save, AlertTriangle, CheckCircle2, User, Calendar, MessageCircle, ThumbsUp, LogIn, MessageSquare, Info } from 'lucide-react';
+import { Send, Heart, Edit3, Trash2, X, Save, User, Calendar, MessageCircle, LogIn, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { useComments, type Comment } from '@/hooks/useComments';
-import { Toast, ToastProvider, ToastTitle, ToastDescription, ToastViewport } from '@/components/ui/toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
-
-// --------------------- Toast Notification ---------------------
-const FeedbackToast = ({ type, message }: { type: 'success' | 'error'; message: string }) => (
-  <Toast>
-    <div className="flex items-center gap-3">
-      {type === 'success' ? (
-        <CheckCircle2 className="text-green-500 w-6 h-6" />
-      ) : (
-        <AlertTriangle className="text-red-500 w-6 h-6" />
-      )}
-      <div>
-        <ToastTitle className="font-semibold">
-          {type === 'success' ? '¡Éxito!' : 'Ups, algo salió mal'}
-        </ToastTitle>
-        <ToastDescription>{message}</ToastDescription>
-      </div>
-    </div>
-  </Toast>
-);
 
 // --------------------- Confirm Dialog ---------------------
 const ConfirmDialog = ({
@@ -104,7 +85,6 @@ const CommentsForumSection = ({ placeId }: { placeId?: string } = {}) => {
   const [newComment, setNewComment] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string } | null>(null);
 
   const { user, loading: authLoading } = useAuth();
@@ -121,6 +101,7 @@ const CommentsForumSection = ({ placeId }: { placeId?: string } = {}) => {
   } = useComments(placeId);
   
   const navigate = useNavigate();
+
   const handleLoginRedirect = () => {
     navigate('/login');
   };
@@ -128,20 +109,12 @@ const CommentsForumSection = ({ placeId }: { placeId?: string } = {}) => {
   const handleSubmit = async () => {
     if (!newComment.trim()) return;
     const success = await createComment(newComment);
-    setToast({
-      type: success ? 'success' : 'error',
-      message: success ? 'Tu comentario fue publicado con éxito 🎉' : 'No se pudo publicar el comentario, inténtalo de nuevo.'
-    });
     if (success) setNewComment('');
   };
 
   const handleSaveEdit = async () => {
     if (!editingCommentId || !editingContent.trim()) return;
     const success = await updateComment(editingCommentId, editingContent);
-    setToast({
-      type: success ? 'success' : 'error',
-      message: success ? 'Comentario actualizado correctamente ✨' : 'Error al actualizar el comentario.'
-    });
     if (success) {
       setEditingCommentId(null);
       setEditingContent('');
@@ -154,32 +127,12 @@ const CommentsForumSection = ({ placeId }: { placeId?: string } = {}) => {
 
   const confirmDeleteAction = async () => {
     if (!confirmDelete) return;
-    const success = await deleteComment(confirmDelete.id);
-    setToast({
-      type: success ? 'success' : 'error',
-      message: success ? 'Comentario eliminado 🗑️' : 'Error al eliminar el comentario.'
-    });
+    await deleteComment(confirmDelete.id);
     setConfirmDelete(null);
   };
 
   const handleReact = async (commentId: string) => {
-    if (!user) return;
-    
-    const success = await reactToComment(commentId);
-    
-    if (success) {
-      setToast({
-        type: 'success',
-        message: comments.find(c => c.id === commentId)?.user_has_reacted 
-          ? 'Ya no te gusta este comentario 👎' 
-          : 'Te gusta este comentario ❤️'
-      });
-    } else {
-      setToast({
-        type: 'error',
-        message: 'Error al procesar la reacción'
-      });
-    }
+    await reactToComment(commentId);
   };
 
   if (authLoading || loading) {
@@ -203,242 +156,236 @@ const CommentsForumSection = ({ placeId }: { placeId?: string } = {}) => {
   }
 
   return (
-    <ToastProvider>
-      <section className="py-20 bg-gradient-to-br from-yellow-50 via-rose-50 to-green-50 relative overflow-hidden">
-        {/* Fondos decorativos */}
-        <div className="absolute top-10 left-10 w-32 h-32 bg-amber-200/30 rounded-full blur-3xl animate-float"></div>
-        <div className="absolute bottom-10 right-10 w-40 h-40 bg-green-200/30 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }}></div>
+    <section className="py-20 bg-gradient-to-br from-yellow-50 via-rose-50 to-green-50 relative overflow-hidden">
+      {/* Fondos decorativos */}
+      <div className="absolute top-10 left-10 w-32 h-32 bg-amber-200/30 rounded-full blur-3xl animate-float"></div>
+      <div className="absolute bottom-10 right-10 w-40 h-40 bg-green-200/30 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }}></div>
 
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Encabezado */}
-          <div className="flex flex-col justify-center items-center mb-12 gap-4">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-center">
-              Foro de{' '}
-              <span className="bg-gradient-to-r from-amber-600 via-rose-500 to-green-500 bg-clip-text text-transparent">
-                Comentarios
-              </span>
-            </h2>
-            <p className="text-lg text-gray-700 max-w-3xl mx-auto text-center leading-relaxed">
-              Comparte tus experiencias y opiniones sobre San Juan Tahitic. {user ? '' : 'Inicia sesión para comentar.'}
-            </p>
-          </div>
-
-          {/* SECCIÓN DE INVITACIÓN PARA USUARIOS NO AUTENTICADOS */}
-          {!user && (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="mb-10"
-            >
-              <Card className="bg-gradient-to-r from-amber-100/80 via-rose-100/80 to-green-100/80 backdrop-blur-sm shadow-lg hover:shadow-2xl border border-amber-200/30 transition-all duration-500 overflow-hidden">
-                <CardContent className="p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="flex-1 text-center md:text-left">
-                    <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
-                      <MessageSquare className="w-8 h-8 text-amber-600" />
-                      <h3 className="text-2xl font-bold text-gray-800">¡Únete a la conversación!</h3>
-                    </div>
-                    <p className="text-gray-700 mb-4">
-                      Comparte tus experiencias, opiniones y preguntas sobre San Juan Tahitic. 
-                      Tu voz es importante para nuestra comunidad.
-                    </p>
-                    <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-                      <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm">#Comunidad</span>
-                      <span className="px-3 py-1 bg-rose-100 text-rose-800 rounded-full text-sm">#Experiencias</span>
-                      <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">#Opiniones</span>
-                    </div>
-                  </div>
-                  
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Button
-                      onClick={handleLoginRedirect}
-                      className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-semibold flex items-center gap-2 px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-                    >
-                      <LogIn className="w-5 h-5" /> Iniciar sesión para comentar
-                    </Button>
-                  </motion.div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Formulario (solo para usuarios autenticados) */}
-          {user && (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="mb-14"
-            >
-              <Card className="bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-2xl border border-white/20 transition-all duration-500">
-                <CardContent className="p-6">
-                  <Textarea
-                    placeholder="Escribe un comentario..."
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    rows={4}
-                    className="bg-white/30 backdrop-blur-sm border border-white/20 rounded-md text-black placeholder:text-black/50 focus:ring-2 focus:ring-rose-400 transition-all duration-300"
-                  />
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={!newComment.trim() || submitting}
-                    className="mt-6 bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white px-8 py-3 rounded-xl font-semibold shadow-xl transition-all duration-300 flex items-center gap-2"
-                  >
-                    {submitting ? (
-                      <>
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                          className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
-                        />
-                        Publicando...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-5 h-5" /> Publicar
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Lista de comentarios */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <AnimatePresence>
-              {comments.length > 0 ? (
-                comments.map((comment: Comment, index: number) => (
-                  <motion.div
-                    key={comment.id}
-                    layout
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.4, delay: index * 0.1 }}
-                  >
-                    <Card className="group relative bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-2xl border border-white/20 transition-all duration-500 overflow-hidden">
-                      <CardHeader className="pb-2">
-                        <div className="flex justify-between items-start">
-                          <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                            <User className="w-5 h-5 text-amber-600" />
-                            {comment.username}
-                          </CardTitle>
-                          <span className="flex items-center gap-1 text-sm text-gray-500">
-                            <Calendar className="w-4 h-4" />
-                            {new Date(comment.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-2">
-                        {editingCommentId === comment.id ? (
-                          <div className="space-y-4">
-                            <Textarea
-                              value={editingContent}
-                              onChange={(e) => setEditingContent(e.target.value)}
-                              rows={3}
-                              className="bg-white/30 backdrop-blur-sm border border-white/20 rounded-md text-black placeholder:text-black/50 focus:ring-2 focus:ring-rose-400 transition-all duration-300"
-                            />
-                            <div className="flex gap-2">
-                              <Button 
-                                onClick={handleSaveEdit} 
-                                disabled={!editingContent.trim()}
-                                className="bg-gradient-to-r from-green-500 to-emerald-600 text-white"
-                              >
-                                <Save className="w-4 h-4 mr-2" /> Guardar
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                onClick={() => setEditingCommentId(null)}
-                                className="border-gray-300"
-                              >
-                                <X className="w-4 h-4 mr-2" /> Cancelar
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="flex items-start gap-3 mb-4">
-                              <MessageCircle className="w-5 h-5 text-amber-600 mt-1 flex-shrink-0" />
-                              <p className="text-gray-700 leading-relaxed">{comment.content}</p>
-                            </div>
-                            
-                            <div className="flex justify-between items-center">
-                              <motion.button
-                                onClick={() => handleReact(comment.id)}
-                                disabled={!user || reactingComments[comment.id]}
-                                whileTap={{ scale: 0.9 }}
-                                className={`flex items-center gap-2 transition-colors duration-300 ${
-                                  comment.user_has_reacted ? 'text-rose-500' : 'text-gray-500 hover:text-rose-400'
-                                }`}
-                              >
-                                {reactingComments[comment.id] ? (
-                                  <motion.div
-                                    animate={{ rotate: 360 }}
-                                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                    className="w-5 h-5 border-2 border-current border-t-transparent rounded-full"
-                                  />
-                                ) : (
-                                  <Heart className={`w-5 h-5 ${comment.user_has_reacted ? 'fill-current' : ''}`} />
-                                )}
-                                <span>{Number(comment.reaction_count) || 0}</span>
-                              </motion.button>
-                              
-                              {user && canEditComment(comment) && (
-                                <div className="flex gap-2">
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm"
-                                    onClick={() => { setEditingCommentId(comment.id); setEditingContent(comment.content); }}
-                                    className="text-gray-600 hover:text-amber-600"
-                                  >
-                                    <Edit3 className="w-4 h-4 mr-1" /> Editar
-                                  </Button>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm"
-                                    onClick={() => handleDelete(comment.id)}
-                                    className="text-gray-600 hover:text-rose-600"
-                                  >
-                                    <Trash2 className="w-4 h-4 mr-1" /> Eliminar
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          </>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))
-              ) : (
-                <div className="col-span-2 text-center py-10 text-gray-500 flex flex-col items-center">
-                  <MessageCircle className="w-12 h-12 text-gray-400 mb-4" />
-                  <p>No hay comentarios todavía.</p>
-                  <p className="mt-2">
-                    {user ? '¡Sé el primero en comentar!' : 'Inicia sesión para ser el primero en comentar.'}
-                  </p>
-                  {!user && (
-                    <Button
-                      onClick={handleLoginRedirect}
-                      className="mt-4 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white"
-                    >
-                      <LogIn className="w-4 h-4 mr-2" /> Iniciar sesión
-                    </Button>
-                  )}
-                </div>
-              )}
-            </AnimatePresence>
-          </div>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Encabezado */}
+        <div className="flex flex-col justify-center items-center mb-12 gap-4">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-center">
+            Foro de{' '}
+            <span className="bg-gradient-to-r from-amber-600 via-rose-500 to-green-500 bg-clip-text text-transparent">
+              Comentarios
+            </span>
+          </h2>
+          <p className="text-lg text-gray-700 max-w-3xl mx-auto text-center leading-relaxed">
+            Comparte tus experiencias y opiniones sobre San Juan Tahitic. {user ? '' : 'Inicia sesión para comentar.'}
+          </p>
         </div>
-      </section>
 
-      {/* Toast */}
-      {toast && <FeedbackToast type={toast.type} message={toast.message} />}
-      <ToastViewport />
+        {/* SECCIÓN DE INVITACIÓN PARA USUARIOS NO AUTENTICADOS */}
+        {!user && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="mb-10"
+          >
+            <Card className="bg-gradient-to-r from-amber-100/80 via-rose-100/80 to-green-100/80 backdrop-blur-sm shadow-lg hover:shadow-2xl border border-amber-200/30 transition-all duration-500 overflow-hidden">
+              <CardContent className="p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex-1 text-center md:text-left">
+                  <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
+                    <MessageSquare className="w-8 h-8 text-amber-600" />
+                    <h3 className="text-2xl font-bold text-gray-800">¡Únete a la conversación!</h3>
+                  </div>
+                  <p className="text-gray-700 mb-4">
+                    Comparte tus experiencias, opiniones y preguntas sobre San Juan Tahitic. 
+                    Tu voz es importante para nuestra comunidad.
+                  </p>
+                  <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                    <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm">#Comunidad</span>
+                    <span className="px-3 py-1 bg-rose-100 text-rose-800 rounded-full text-sm">#Experiencias</span>
+                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">#Opiniones</span>
+                  </div>
+                </div>
+                
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Button
+                    onClick={handleLoginRedirect}
+                    className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-semibold flex items-center gap-2 px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    <LogIn className="w-5 h-5" /> Iniciar sesión para comentar
+                  </Button>
+                </motion.div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Formulario (solo para usuarios autenticados) */}
+        {user && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="mb-14"
+          >
+            <Card className="bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-2xl border border-white/20 transition-all duration-500">
+              <CardContent className="p-6">
+                <Textarea
+                  placeholder="Escribe un comentario..."
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  rows={4}
+                  className="bg-white/30 backdrop-blur-sm border border-white/20 rounded-md text-black placeholder:text-black/50 focus:ring-2 focus:ring-rose-400 transition-all duration-300"
+                />
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!newComment.trim() || submitting}
+                  className="mt-6 bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white px-8 py-3 rounded-xl font-semibold shadow-xl transition-all duration-300 flex items-center gap-2"
+                >
+                  {submitting ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
+                      />
+                      Publicando...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5" /> Publicar
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Lista de comentarios */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <AnimatePresence>
+            {comments.length > 0 ? (
+              comments.map((comment: Comment, index: number) => (
+                <motion.div
+                  key={comment.id}
+                  layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.4, delay: index * 0.1 }}
+                >
+                  <Card className="group relative bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-2xl border border-white/20 transition-all duration-500 overflow-hidden">
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-start">
+                        <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                          <User className="w-5 h-5 text-amber-600" />
+                          {comment.username}
+                        </CardTitle>
+                        <span className="flex items-center gap-1 text-sm text-gray-500">
+                          <Calendar className="w-4 h-4" />
+                          {new Date(comment.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-2">
+                      {editingCommentId === comment.id ? (
+                        <div className="space-y-4">
+                          <Textarea
+                            value={editingContent}
+                            onChange={(e) => setEditingContent(e.target.value)}
+                            rows={3}
+                            className="bg-white/30 backdrop-blur-sm border border-white/20 rounded-md text-black placeholder:text-black/50 focus:ring-2 focus:ring-rose-400 transition-all duration-300"
+                          />
+                          <div className="flex gap-2">
+                            <Button 
+                              onClick={handleSaveEdit} 
+                              disabled={!editingContent.trim()}
+                              className="bg-gradient-to-r from-green-500 to-emerald-600 text-white"
+                            >
+                              <Save className="w-4 h-4 mr-2" /> Guardar
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              onClick={() => setEditingCommentId(null)}
+                              className="border-gray-300"
+                            >
+                              <X className="w-4 h-4 mr-2" /> Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-start gap-3 mb-4">
+                            <MessageCircle className="w-5 h-5 text-amber-600 mt-1 flex-shrink-0" />
+                            <p className="text-gray-700 leading-relaxed">{comment.content}</p>
+                          </div>
+                          
+                          <div className="flex justify-between items-center">
+                            <motion.button
+                              onClick={() => handleReact(comment.id)}
+                              disabled={reactingComments[comment.id]}
+                              whileTap={{ scale: 0.9 }}
+                              className={`flex items-center gap-2 transition-colors duration-300 ${
+                                comment.user_has_reacted ? 'text-rose-500' : 'text-gray-500 hover:text-rose-400'
+                              }`}
+                            >
+                              {reactingComments[comment.id] ? (
+                                <motion.div
+                                  animate={{ rotate: 360 }}
+                                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                  className="w-5 h-5 border-2 border-current border-t-transparent rounded-full"
+                                />
+                              ) : (
+                                <Heart className={`w-5 h-5 ${comment.user_has_reacted ? 'fill-current' : ''}`} />
+                              )}
+                              <span>{Number(comment.reaction_count) || 0}</span>
+                            </motion.button>
+                            
+                            {user && canEditComment(comment) && (
+                              <div className="flex gap-2">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => { setEditingCommentId(comment.id); setEditingContent(comment.content); }}
+                                  className="text-gray-600 hover:text-amber-600"
+                                >
+                                  <Edit3 className="w-4 h-4 mr-1" /> Editar
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => handleDelete(comment.id)}
+                                  className="text-gray-600 hover:text-rose-600"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-1" /> Eliminar
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))
+            ) : (
+              <div className="col-span-2 text-center py-10 text-gray-500 flex flex-col items-center">
+                <MessageCircle className="w-12 h-12 text-gray-400 mb-4" />
+                <p>No hay comentarios todavía.</p>
+                <p className="mt-2">
+                  {user ? '¡Sé el primero en comentar!' : 'Inicia sesión para ser el primero en comentar.'}
+                </p>
+                {!user && (
+                  <Button
+                    onClick={handleLoginRedirect}
+                    className="mt-4 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white"
+                  >
+                    <LogIn className="w-4 h-4 mr-2" /> Iniciar sesión
+                  </Button>
+                )}
+              </div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
 
       {/* Confirm Modal */}
       {confirmDelete && (
@@ -450,7 +397,7 @@ const CommentsForumSection = ({ placeId }: { placeId?: string } = {}) => {
           type="danger"
         />
       )}
-    </ToastProvider>
+    </section>
   );
 };
 

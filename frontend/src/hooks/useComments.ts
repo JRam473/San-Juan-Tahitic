@@ -69,28 +69,6 @@ export const useComments = (placeId?: string) => {
     });
   }, []);
 
-  // Actualizar reacciones de un comentario específico
-// En tu hook useComments, mejora la función updateCommentReactions:
-const updateCommentReactions = useCallback(async (commentId: string) => {
-  try {
-    const [reactionCountResponse, userReactionResponse] = await Promise.all([
-      api.get<ReactionCountResponse>(`/api/comments/${commentId}/reaction-count`),
-      api.get(`/api/comments/${commentId}/reactions?user=${user?.id}`) // Necesitarías crear este endpoint
-    ]);
-    
-    const counts = reactionCountResponse.data.counts || [];
-    const reactionCount = reactionCountResponse.data.total || counts.reduce((total, item) => total + item.count, 0);
-    
-    // Verificar si el usuario actual ha reaccionado
-    const userReactions = userReactionResponse.data?.reactions || [];
-    const userHasReacted = userReactions.some((reaction: any) => reaction.user_id === user?.id);
-    
-    setComments(prev => updateCommentsWithReaction(prev, commentId, userHasReacted, reactionCount));
-  } catch (error) {
-    console.error(`Error updating reactions for comment ${commentId}:`, error);
-  }
-}, [updateCommentsWithReaction, user?.id]);
-
   // Fetch comments con reacciones del usuario
   const fetchComments = useCallback(async () => {
     try {
@@ -193,8 +171,8 @@ const updateCommentReactions = useCallback(async (commentId: string) => {
       }
 
       toast({
-        title: "Comentario enviado",
-        description: "Tu comentario se ha publicado exitosamente",
+        title: "Comentario enviado ✅",
+        description: "Tu comentario fue publicado con éxito 🎉",
       });
 
       await fetchComments();
@@ -235,7 +213,7 @@ const updateCommentReactions = useCallback(async (commentId: string) => {
       }
 
       toast({
-        title: "Comentario actualizado",
+        title: "Comentario actualizado correctamente ✨",
         description: "Tu comentario se ha actualizado exitosamente",
       });
 
@@ -264,7 +242,7 @@ const updateCommentReactions = useCallback(async (commentId: string) => {
       }
       
       toast({
-        title: "Comentario eliminado",
+        title: "Comentario eliminado 🗑️",
         description: "Tu comentario se ha eliminado exitosamente",
       });
 
@@ -281,72 +259,68 @@ const updateCommentReactions = useCallback(async (commentId: string) => {
     }
   };
 
-  // React to comment - Versión simplificada similar a useUserPhotos
-const reactToComment = async (commentId: string) => {
-  if (!user) {
-    toast({
-      title: "Autenticación requerida",
-      description: "Debes iniciar sesión para reaccionar",
-      variant: "destructive",
-    });
-    return false;
-  }
-
-  try {
-    setReactingComments(prev => ({ ...prev, [commentId]: true }));
-    
-    // Llamada al servidor - enfoque pesimista
-    const response = await api.post(`/api/comments/${commentId}/reactions`, { 
-      reaction_type: 'like' 
-    });
-
-    if (response.status !== 200 && response.status !== 201) {
-      throw new Error('Error en el servidor');
+  // React to comment
+  const reactToComment = async (commentId: string) => {
+    if (!user) {
+      toast({
+        title: "🔒 Autenticación requerida",
+        description: "Debes iniciar sesión para reaccionar",
+        variant: "destructive",
+      });
+      return false;
     }
 
-    // Esperar a que el servidor responda antes de actualizar la UI
-    const comment = comments.find(c => c.id === commentId) || 
-                   comments.flatMap(c => c.replies || []).find(r => r.id === commentId);
-    
-    // Actualizar UI basado en la respuesta del servidor
-    const newState = response.data.action === 'added';
-    
-    setComments(prev => updateCommentsWithReaction(
-      prev, 
-      commentId, 
-      newState,
-      newState ? (comment?.reaction_count || 0) + 1 : Math.max(0, (comment?.reaction_count || 1) - 1)
-    ));
+    try {
+      setReactingComments(prev => ({ ...prev, [commentId]: true }));
+      
+      const response = await api.post(`/api/comments/${commentId}/reactions`, { 
+        reaction_type: 'like' 
+      });
 
-    // Feedback visual
-    if (newState) {
+      if (response.status !== 200 && response.status !== 201) {
+        throw new Error('Error en el servidor');
+      }
+
+      const comment = comments.find(c => c.id === commentId) || 
+                     comments.flatMap(c => c.replies || []).find(r => r.id === commentId);
+      
+      const newState = response.data.action === 'added';
+      
+      setComments(prev => updateCommentsWithReaction(
+        prev, 
+        commentId, 
+        newState,
+        newState ? (comment?.reaction_count || 0) + 1 : Math.max(0, (comment?.reaction_count || 1) - 1)
+      ));
+
+      if (newState) {
+        toast({
+          title: "❤️ Te gusta",
+          description: "Has reaccionado al comentario",
+        });
+      } else {
+        toast({
+          title: "💔 Ya no te gusta",
+          description: "Has quitado tu reacción",
+        });
+      }
+
+      return true;
+    } catch (err: any) {
+      console.error('Error en reactToComment:', err);
+      
+      const errorMessage = err.response?.data?.message || err.message || 'Error al procesar la reacción';
+      
       toast({
-        title: "❤️ Te gusta",
-        description: "Has reaccionado al comentario",
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
       });
-    } else {
-      toast({
-        title: "💔 Ya no te gusta",
-        description: "Has quitado tu reacción",
-      });
+      return false;
+    } finally {
+      setReactingComments(prev => ({ ...prev, [commentId]: false }));
     }
-
-    return true;
-  } catch (err: any) {
-    console.error('Error en reactToComment:', err);
-    
-    const errorMessage = err.response?.data?.message || err.message || 'Error al procesar la reacción';
-    
-    toast({
-      title: "Error",
-      description: errorMessage,
-      variant: "destructive",
-    });
-    return false;
-  } finally {
-    setReactingComments(prev => ({ ...prev, [commentId]: false }));
-  }
-};
+  };
 
   // Helper function para verificar si usuario puede editar
   const canEditComment = useCallback((comment: Comment): boolean => {
@@ -368,7 +342,6 @@ const reactToComment = async (commentId: string) => {
     deleteComment,
     reactToComment,
     canEditComment,
-    refetch: fetchComments,
-    updateCommentReactions
+    refetch: fetchComments
   };
 };

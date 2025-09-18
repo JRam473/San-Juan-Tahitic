@@ -37,19 +37,25 @@ const PlaceSkeletonGrid = ({ count }: { count: number }) => (
 );
 
 // Componente de rating
+// Componente de Rating Mejorado
 const Rating = ({ 
   rating, 
   onRatingChange, 
   totalRatings = 0, 
   size = "md", 
-  readonly = false 
+  readonly = false,
+  showProgress = true // Nueva prop para controlar la visualización del progreso
 }: {
   rating: number | null | undefined;
   onRatingChange?: (rating: number) => void;
   totalRatings?: number;
   size?: "sm" | "md" | "lg";
   readonly?: boolean;
+  showProgress?: boolean;
 }) => {
+  const [hoverRating, setHoverRating] = useState(0);
+  const [isHovering, setIsHovering] = useState(false);
+  
   const sizeClasses = {
     sm: "w-4 h-4",
     md: "w-5 h-5",
@@ -57,31 +63,103 @@ const Rating = ({
   };
 
   const numericRating = typeof rating === 'number' ? rating : 0;
+  const displayRating = isHovering && hoverRating > 0 ? hoverRating : numericRating;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div 
+      className="flex flex-col gap-2"
+      onMouseEnter={() => !readonly && setIsHovering(true)}
+      onMouseLeave={() => !readonly && setIsHovering(false)}
+    >
       <div className="flex items-center gap-1">
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
             type="button"
             onClick={() => !readonly && onRatingChange?.(star)}
+            onMouseEnter={() => !readonly && setHoverRating(star)}
             disabled={readonly}
-            className={`transition-colors ${
-              readonly ? 'cursor-default' : 'cursor-pointer hover:scale-110'
+            className={`relative transition-all duration-200 ${
+              readonly ? 'cursor-default' : 'cursor-pointer hover:scale-125'
             }`}
           >
+            {/* Estrella de fondo (siempre visible) */}
             <Star
               className={sizeClasses[size]}
-              fill={star <= numericRating ? "currentColor" : "none"}
-              color={star <= numericRating ? "#f59e0b" : "#d1d5db"}
+              fill="none"
+              color="#d1d5db"
             />
+            
+            {/* Estrella de relleno (según rating/hover) */}
+            <div 
+              className="absolute top-0 left-0 overflow-hidden"
+              style={{ width: star <= displayRating ? '100%' : '0%' }}
+            >
+              <Star
+                className={sizeClasses[size]}
+                fill="currentColor"
+                color={star <= displayRating ? "#f59e0b" : "#d1d5db"}
+              />
+            </div>
+            
+            {/* Efecto de brillo al hacer hover */}
+            {!readonly && star <= hoverRating && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-2 h-2 bg-yellow-300 rounded-full blur-[3px] opacity-70"></div>
+              </div>
+            )}
           </button>
         ))}
-        <span className="text-sm text-muted-foreground ml-2">
-          {numericRating > 0 ? numericRating.toFixed(1) : 'Sin calificaciones'}
-        </span>
+
+<span className={cn(
+  "text-sm font-medium ml-2",
+  numericRating > 0 ? "text-amber-700" : "text-muted-foreground"
+)}>
+  {numericRating && numericRating > 0 ? numericRating.toFixed(1) : 'Sin calificaciones'}
+</span>
       </div>
+      
+      {/* Barra de progreso mejorada */}
+      {showProgress && !readonly && (
+        <div className="mt-2 relative">
+          {/* Fondo de la barra */}
+          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            {/* Barra de progreso animada */}
+            <motion.div 
+              className="h-full bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full"
+              initial={{ width: "0%" }}
+              animate={{ width: `${(displayRating / 5) * 100}%` }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            />
+          </div>
+          
+          {/* Indicador de valor numérico */}
+          <motion.div
+            className="absolute -top-6 text-xs font-bold text-amber-600"
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ 
+              opacity: isHovering ? 1 : 0,
+              x: isHovering ? 0 : -10
+            }}
+            style={{ left: `${(displayRating / 5) * 100}%` }}
+          >
+            {displayRating}/5
+          </motion.div>
+          
+          {/* Puntos de referencia */}
+          <div className="flex justify-between mt-1">
+            {[1, 2, 3, 4, 5].map((num) => (
+              <div
+                key={num}
+                className={`w-1 h-1 rounded-full ${
+                  num <= displayRating ? 'bg-amber-500' : 'bg-gray-300'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+      
       {totalRatings > 0 && (
         <p className="text-xs text-muted-foreground">
           {totalRatings} {totalRatings === 1 ? 'calificación' : 'calificaciones'}
@@ -148,7 +226,12 @@ const RatingStatsDialog = ({ placeId, placeName, stats, variant = "default", the
               "bg-primary/30": variant === "primary",
               "bg-secondary/30": variant === "secondary"
             })}>
-              <p className="text-2xl font-bold">{stats.average_rating.toFixed(1)}</p>
+              <p className="text-2xl font-bold">
+  {stats.average_rating !== null && stats.average_rating !== undefined 
+    ? Number(stats.average_rating).toFixed(1) 
+    : '0.0'
+  }
+</p>
               <p className="text-sm text-muted-foreground">Promedio</p>
             </div>
             <div className={cn("text-center p-4 rounded-lg", {
@@ -472,14 +555,25 @@ const Places = () => {
 
   if (loading) {
     return (
-      <section id="places" className={`py-20 ${themeClasses[theme].bg}`}>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="places" className={`py-24 ${themeClasses[theme].bg} relative overflow-hidden`}>
+        {/* Elementos decorativos de fondo */}
+        <div className="absolute top-20 left-10 w-32 h-32 bg-blue-200/30 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute bottom-20 right-10 w-40 h-40 bg-indigo-200/30 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }}></div>
+        
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="text-center mb-16">
-            <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 ${themeClasses[theme].text}`}>
-              Lugares
-              <span className="block text-primary">Destacados</span>
+            <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-100 to-indigo-100 px-4 py-2 rounded-full mb-6">
+              <MapPin className="h-5 w-5 text-blue-600" />
+              <span className="text-blue-800 font-medium">Destinos Únicos</span>
+            </div>
+            
+            <h2 className="text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
+              Lugares{' '}
+              <span className="bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 bg-clip-text text-transparent">
+                Destacados
+              </span>
             </h2>
-            <p className={`text-xl text-muted-foreground max-w-3xl mx-auto ${themeClasses[theme].text}`}>
+            <p className="text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed">
               Descubre los rincones más fascinantes de San Juan Tahitic, cada uno con su propia magia y experiencias únicas.
             </p>
           </div>
@@ -491,12 +585,23 @@ const Places = () => {
 
   if (error) {
     return (
-      <section id="places" className={`py-20 ${themeClasses[theme].bg}`}>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="places" className={`py-24 ${themeClasses[theme].bg} relative overflow-hidden`}>
+        {/* Elementos decorativos de fondo */}
+        <div className="absolute top-20 left-10 w-32 h-32 bg-blue-200/30 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute bottom-20 right-10 w-40 h-40 bg-indigo-200/30 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }}></div>
+        
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="text-center mb-16">
-            <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 ${themeClasses[theme].text}`}>
-              Lugares
-              <span className="block text-primary">Destacados</span>
+            <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-100 to-indigo-100 px-4 py-2 rounded-full mb-6">
+              <MapPin className="h-5 w-5 text-blue-600" />
+              <span className="text-blue-800 font-medium">Destinos Únicos</span>
+            </div>
+            
+            <h2 className="text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
+              Lugares{' '}
+              <span className="bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 bg-clip-text text-transparent">
+                Destacados
+              </span>
             </h2>
           </div>
           <Alert variant="destructive" className="max-w-2xl mx-auto">
@@ -512,14 +617,25 @@ const Places = () => {
 
   if (places.length === 0) {
     return (
-      <section id="places" className={`py-20 ${themeClasses[theme].bg}`}>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="places" className={`py-24 ${themeClasses[theme].bg} relative overflow-hidden`}>
+        {/* Elementos decorativos de fondo */}
+        <div className="absolute top-20 left-10 w-32 h-32 bg-blue-200/30 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute bottom-20 right-10 w-40 h-40 bg-indigo-200/30 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }}></div>
+        
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="text-center mb-16">
-            <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 ${themeClasses[theme].text}`}>
-              Lugares
-              <span className="block text-primary">Destacados</span>
+            <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-100 to-indigo-100 px-4 py-2 rounded-full mb-6">
+              <MapPin className="h-5 w-5 text-blue-600" />
+              <span className="text-blue-800 font-medium">Destinos Únicos</span>
+            </div>
+            
+            <h2 className="text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
+              Lugares{' '}
+              <span className="bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 bg-clip-text text-transparent">
+                Destacados
+              </span>
             </h2>
-            <p className={`text-xl text-muted-foreground max-w-3xl mx-auto ${themeClasses[theme].text}`}>
+            <p className="text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed">
               No hay lugares disponibles en este momento. ¡Vuelve pronto para descubrir nuevos destinos!
             </p>
           </div>
@@ -528,29 +644,37 @@ const Places = () => {
     );
   }
 
-  return (
-    <>
-      <section id="places" className={`py-20 ${themeClasses[theme].bg}`}>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 ${themeClasses[theme].text}`}>
-              Lugares
-              <span className="block text-primary">Destacados</span>
-            </h2>
-            <p className={`text-xl text-muted-foreground max-w-3xl mx-auto ${themeClasses[theme].text}`}>
-              Descubre los rincones más fascinantes de San Juan Tahitic, cada uno con su propia magia y experiencias únicas.
-            </p>
+return (
+  <>
+    <section id="places" className={`py-20 ${themeClasses[theme].bg}`}>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
+        <div className="text-center mb-20">
+          <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-100 to-indigo-100 px-4 py-2 rounded-full mb-6">
+            <MapPin className="h-5 w-5 text-blue-600" />
+            <span className="text-blue-800 font-medium">Destinos Únicos</span>
           </div>
+          
+          <h2 className="text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
+            Lugares{' '}
+            <span className="bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 bg-clip-text text-transparent">
+              Destacados
+            </span>
+          </h2>
+          <p className="text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed">
+            Descubre los rincones más fascinantes de San Juan Tahitic, cada uno con su propia magia y experiencias únicas.
+          </p>
+        </div>
 
-          {/* SECCIÓN DE INVITACIÓN PARA VALORACIONES */}
-          {!user && (
-            <RatingInvitationBanner 
-              theme={theme} 
-              onLoginRedirect={handleLoginRedirect} 
-            />
-          )}
+        {/* SECCIÓN DE INVITACIÓN PARA VALORACIONES */}
+        {!user && (
+          <RatingInvitationBanner 
+            theme={theme} 
+            onLoginRedirect={handleLoginRedirect} 
+          />
+        )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
             {places.map((place) => {
               const features = getPlaceFeatures(place.description);
               const displayRating = userRatings[place.id] || place.average_rating || 0;
@@ -606,39 +730,52 @@ const Places = () => {
                     </p>
 
                     {/* Rating */}
-                    <div className="mb-4">
-                      <div className="flex items-center justify-between">
-                        <Rating 
-                          rating={displayRating}
-                          onRatingChange={(rating) => handleRatingChange(place.id, place.name, rating)}
-                          totalRatings={place.total_ratings || 0}
-                          size="sm"
-                          readonly={isCurrentlyRating}
-                        />
-                        {isCurrentlyRating && (
-                          <div className="text-sm text-muted-foreground">
-                            Calificando...
-                          </div>
-                        )}
-                      </div>
-                      
-                      {!user && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Inicia sesión para calificar
-                        </p>
-                      )}
-                      
-                      {/* Estadísticas de calificaciones */}
-                      {ratingStats[place.id] && ratingStats[place.id].total_ratings > 0 && (
-                        <RatingStatsDialog 
-                          placeId={place.id}
-                          placeName={place.name}
-                          stats={ratingStats[place.id]}
-                          variant={theme === 'default' ? 'default' : 'primary'}
-                          theme={theme}
-                        />
-                      )}
-                    </div>
+
+
+<div className="mb-4">
+  <div className="flex items-center justify-between">
+    <div className="flex items-center gap-2">
+      <Rating 
+        rating={displayRating}
+        onRatingChange={(rating) => handleRatingChange(place.id, place.name, rating)}
+        totalRatings={place.total_ratings || 0}
+        size="sm"
+        readonly={isCurrentlyRating}
+      />
+      
+      {/* Mostrar el promedio numérico de manera destacada */}
+      {place.average_rating !== null && place.average_rating !== undefined && place.average_rating > 0 && (
+        <div className="flex items-center ml-2 bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold py-1 px-3 rounded-full shadow-lg">
+          <Star className="w-3 h-3 mr-1 fill-white" />
+          <span className="text-sm">{Number(place.average_rating).toFixed(1)}</span>
+        </div>
+      )}
+    </div>
+    
+    {isCurrentlyRating && (
+      <div className="text-sm text-muted-foreground">
+        Calificando...
+      </div>
+    )}
+  </div>
+  
+  {!user && (
+    <p className="text-xs text-muted-foreground mt-1">
+      Inicia sesión para calificar
+    </p>
+  )}
+  
+  {/* Estadísticas de calificaciones */}
+  {ratingStats[place.id] && ratingStats[place.id].total_ratings > 0 && (
+    <RatingStatsDialog 
+      placeId={place.id}
+      placeName={place.name}
+      stats={ratingStats[place.id]}
+      variant={theme === 'default' ? 'default' : 'primary'}
+      theme={theme}
+    />
+  )}
+</div>
 
                     {/* Info */}
                     <div className="space-y-2 mb-4 text-sm">
