@@ -90,18 +90,32 @@ const Rating = ({
 };
 
 // Componente para mostrar estadísticas de calificaciones
-const RatingStatsDialog = ({ placeId, placeName, stats, variant = "default" }: { 
+const RatingStatsDialog = ({ placeId, placeName, stats, variant = "default", theme = "default" }: { 
   placeId: string; 
   placeName: string;
   stats: any;
   variant?: "default" | "primary" | "secondary";
+  theme?: "default" | "nature" | "beach" | "cultural";
 }) => {
   if (!stats) return null;
 
-  const variantClasses = {
-    default: "bg-background text-foreground",
-    primary: "bg-primary text-primary-foreground",
-    secondary: "bg-secondary text-secondary-foreground"
+  const themeButtonClasses = {
+    default: {
+      primary: "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md hover:from-blue-600 hover:to-indigo-700",
+      secondary: "bg-secondary text-secondary-foreground"
+    },
+    nature: {
+      primary: "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md hover:from-green-600 hover:to-emerald-700",
+      secondary: "bg-green-200 text-green-800 hover:bg-green-300"
+    },
+    beach: {
+      primary: "bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-md hover:from-blue-600 hover:to-cyan-700",
+      secondary: "bg-blue-200 text-blue-800 hover:bg-blue-300"
+    },
+    cultural: {
+      primary: "bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md hover:from-amber-600 hover:to-orange-700",
+      secondary: "bg-amber-200 text-amber-800 hover:bg-amber-300"
+    }
   };
 
   return (
@@ -110,10 +124,7 @@ const RatingStatsDialog = ({ placeId, placeName, stats, variant = "default" }: {
         <Button 
           variant={variant === "primary" ? "default" : "outline"} 
           size="sm" 
-          className={cn("mt-2", {
-            "bg-primary text-white": variant === "primary",
-            "bg-secondary text-secondary-foreground": variant === "secondary"
-          })}
+          className={cn("mt-2 transition-all duration-300 transform hover:scale-105", themeButtonClasses[theme][variant])}
         >
           <BarChart3 className="w-4 h-4 mr-2" />
           Ver estadísticas
@@ -121,7 +132,7 @@ const RatingStatsDialog = ({ placeId, placeName, stats, variant = "default" }: {
       </DialogTrigger>
       <DialogContent className="sm:max-w-md bg-white/30 backdrop-blur-sm border border-white/20 p-2 text-gray-900 dark:text-gray-100 dark:bg-black/30 dark:border-gray-700 shadow-lg rounded-md">
         <DialogHeader>
-          <DialogTitle className={cn({
+          <DialogTitle className={cn("text-lg font-bold", {
             "text-primary-foreground": variant === "primary",
             "text-secondary-foreground": variant === "secondary"
           })}>
@@ -248,25 +259,25 @@ const Places = () => {
       bg: 'bg-background',
       text: 'text-foreground',
       alert: 'bg-blue-50 text-blue-800 border-blue-200',
-      button: 'bg-primary text-primary-foreground'
+      button: 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700'
     },
     nature: {
       bg: 'bg-green-50',
       text: 'text-green-900',
       alert: 'bg-green-50 text-green-800 border-green-200',
-      button: 'bg-green-600 text-white hover:bg-green-700'
+      button: 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700'
     },
     beach: {
       bg: 'bg-blue-50',
       text: 'text-blue-900',
       alert: 'bg-blue-50 text-blue-800 border-blue-200',
-      button: 'bg-blue-600 text-white hover:bg-blue-700'
+      button: 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white hover:from-blue-600 hover:to-cyan-700'
     },
     cultural: {
       bg: 'bg-amber-50',
       text: 'text-amber-900',
       alert: 'bg-amber-50 text-amber-800 border-amber-200',
-      button: 'bg-amber-600 text-white hover:bg-amber-700'
+      button: 'bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-600 hover:to-orange-700'
     }
   };
 
@@ -539,6 +550,7 @@ const Places = () => {
                           placeName={place.name}
                           stats={ratingStats[place.id]}
                           variant={theme === 'default' ? 'default' : 'primary'}
+                          theme={theme}
                         />
                       )}
                     </div>
@@ -572,8 +584,16 @@ const Places = () => {
                       ))}
                     </div>
 
-                    {/* Action */}
-                    <Button className={`w-full ${themeClasses[theme].button}`}>
+                    {/* Action - Botón corregido */}
+                    <Button 
+                      className={cn(
+                        "w-full shadow-md hover:shadow-lg transition-all duration-300",
+                        theme === 'default' && "bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700",
+                        theme === 'nature' && "bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700",
+                        theme === 'beach' && "bg-gradient-to-r from-blue-500 to-cyan-600 text-white hover:from-blue-600 hover:to-cyan-700",
+                        theme === 'cultural' && "bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-600 hover:to-orange-700"
+                      )}
+                    >
                       Ver Detalles
                     </Button>
                   </div>

@@ -407,6 +407,7 @@ html {
   -webkit-column-break-inside: avoid;
 }
 
+
 /* En tu archivo CSS */
 :root {
   --dialog-glass-bg: rgba(255, 255, 255, 0.3);
