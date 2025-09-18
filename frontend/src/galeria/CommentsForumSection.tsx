@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Heart, Edit3, Trash2, X, Save, AlertTriangle, CheckCircle2, User, Calendar, MessageCircle, ThumbsUp } from 'lucide-react';
+import { Send, Heart, Edit3, Trash2, X, Save, AlertTriangle, CheckCircle2, User, Calendar, MessageCircle, ThumbsUp, LogIn, MessageSquare, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { useComments, type Comment } from '@/hooks/useComments';
 import { Toast, ToastProvider, ToastTitle, ToastDescription, ToastViewport } from '@/components/ui/toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { useNavigate } from 'react-router-dom';
 
 // --------------------- Toast Notification ---------------------
 const FeedbackToast = ({ type, message }: { type: 'success' | 'error'; message: string }) => (
@@ -118,6 +119,11 @@ const CommentsForumSection = ({ placeId }: { placeId?: string } = {}) => {
     reactToComment, 
     canEditComment 
   } = useComments(placeId);
+  
+  const navigate = useNavigate();
+  const handleLoginRedirect = () => {
+    navigate('/login');
+  };
 
   const handleSubmit = async () => {
     if (!newComment.trim()) return;
@@ -217,7 +223,49 @@ const CommentsForumSection = ({ placeId }: { placeId?: string } = {}) => {
             </p>
           </div>
 
-          {/* Formulario */}
+          {/* SECCIÓN DE INVITACIÓN PARA USUARIOS NO AUTENTICADOS */}
+          {!user && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="mb-10"
+            >
+              <Card className="bg-gradient-to-r from-amber-100/80 via-rose-100/80 to-green-100/80 backdrop-blur-sm shadow-lg hover:shadow-2xl border border-amber-200/30 transition-all duration-500 overflow-hidden">
+                <CardContent className="p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="flex-1 text-center md:text-left">
+                    <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
+                      <MessageSquare className="w-8 h-8 text-amber-600" />
+                      <h3 className="text-2xl font-bold text-gray-800">¡Únete a la conversación!</h3>
+                    </div>
+                    <p className="text-gray-700 mb-4">
+                      Comparte tus experiencias, opiniones y preguntas sobre San Juan Tahitic. 
+                      Tu voz es importante para nuestra comunidad.
+                    </p>
+                    <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                      <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm">#Comunidad</span>
+                      <span className="px-3 py-1 bg-rose-100 text-rose-800 rounded-full text-sm">#Experiencias</span>
+                      <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">#Opiniones</span>
+                    </div>
+                  </div>
+                  
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Button
+                      onClick={handleLoginRedirect}
+                      className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-semibold flex items-center gap-2 px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                    >
+                      <LogIn className="w-5 h-5" /> Iniciar sesión para comentar
+                    </Button>
+                  </motion.div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Formulario (solo para usuarios autenticados) */}
           {user && (
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
@@ -373,6 +421,14 @@ const CommentsForumSection = ({ placeId }: { placeId?: string } = {}) => {
                   <p className="mt-2">
                     {user ? '¡Sé el primero en comentar!' : 'Inicia sesión para ser el primero en comentar.'}
                   </p>
+                  {!user && (
+                    <Button
+                      onClick={handleLoginRedirect}
+                      className="mt-4 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white"
+                    >
+                      <LogIn className="w-4 h-4 mr-2" /> Iniciar sesión
+                    </Button>
+                  )}
                 </div>
               )}
             </AnimatePresence>

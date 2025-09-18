@@ -1,82 +1,118 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Heart, X, Trash2, UploadCloud, Edit3, User, Calendar, Image, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { Plus, Heart, X, Trash2, UploadCloud, Edit3, User, Calendar, Image, AlertTriangle, CheckCircle2, Info, LogIn, Camera, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUserPhotos } from '@/hooks/useUserPhotos';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
-const ConfirmDialog = ({
-  isOpen,
-  onConfirm,
-  onCancel,
-  message,
-  type = 'danger'
-}: {
-  isOpen: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-  message: string;
-  type?: 'danger' | 'warning' | 'info';
-}) => {
-  const getStyles = () => {
-    switch (type) {
-      case 'danger':
-        return {
-          button: 'bg-red-600 hover:bg-red-700 text-white',
-          icon: <AlertTriangle className="w-5 h-5 text-red-600" />,
-          title: 'text-red-700'
-        };
-      case 'warning':
-        return {
-          button: 'bg-yellow-600 hover:bg-yellow-700 text-white',
-          icon: <AlertTriangle className="w-5 h-5 text-yellow-600" />,
-          title: 'text-yellow-700'
-        };
-      case 'info':
-        return {
-          button: 'bg-blue-600 hover:bg-blue-700 text-white',
-          icon: <Info className="w-5 h-5 text-blue-600" />,
-          title: 'text-blue-700'
-        };
-      default:
-        return {
-          button: 'bg-red-600 hover:bg-red-700 text-white',
-          icon: <AlertTriangle className="w-5 h-5 text-red-600" />,
-          title: 'text-red-700'
-        };
-    }
-  };
+// Componente de invitación con animación
+const InvitationBanner = () => {
+  const navigate = useNavigate();
+  const [currentTextIndex, setCurrentTextIndex] = useState(0);
+  
+  const invitationTexts = [
+    "¡Comparte la belleza de San Juan Tahitic!",
+    "Sube tus fotos favoritas del pueblo",
+    "Muestra los rincones más especiales",
+    "Preserva los recuerdos de nuestra comunidad"
+  ];
 
-  const styles = getStyles();
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTextIndex((prev) => (prev + 1) % invitationTexts.length);
+    }, 3000);
+    
+    return () => clearInterval(interval);
+  }, [invitationTexts.length]);
+
+  
 
   return (
-    <Dialog open={isOpen} onOpenChange={onCancel}>
-      <DialogContent className="sm:max-w-md bg-white/30 backdrop-blur-sm border border-white/20 p-2 text-gray-900 dark:text-gray-100 dark:bg-black/30 dark:border-gray-700 shadow-lg rounded-md">
-        <DialogHeader className="flex flex-row items-center gap-3">
-          <div className={styles.title}>
-            {styles.icon}
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.7 }}
+      className="relative bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 rounded-2xl p-6 mb-12 overflow-hidden border border-white/20 backdrop-blur-sm"
+    >
+      {/* Elementos decorativos de fondo */}
+      <div className="absolute -top-10 -left-10 w-32 h-32 bg-indigo-400/20 rounded-full blur-xl"></div>
+      <div className="absolute -bottom-8 -right-8 w-28 h-28 bg-pink-400/20 rounded-full blur-xl"></div>
+      
+      <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="flex-1 text-center md:text-left">
+          <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+            <MapPin className="w-6 h-6 text-indigo-600" />
+            <h3 className="text-xl font-bold text-gray-800">San Juan Tahitic</h3>
           </div>
-          <div>
-            <DialogTitle className={styles.title}>¿Estás seguro?</DialogTitle>
-            <DialogDescription>{message}</DialogDescription>
+          
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={currentTextIndex}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.5 }}
+              className="text-lg text-gray-700 mb-4"
+            >
+              {invitationTexts[currentTextIndex]}
+            </motion.p>
+          </AnimatePresence>
+          
+          <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+            <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm">#Paisajes</span>
+            <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">#Tradiciones</span>
+            <span className="px-3 py-1 bg-pink-100 text-pink-800 rounded-full text-sm">#Comunidad</span>
           </div>
-        </DialogHeader>
-        <DialogFooter className="flex gap-2">
-          <Button variant="outline" onClick={onCancel}>
-            Cancelar
-          </Button>
-          <Button className={styles.button} onClick={onConfirm}>
-            Eliminar
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+        
+        <motion.div
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          
+        </motion.div>
+      </div>
+    </motion.div>
   );
 };
+
+// Componente de botón de inicio de sesión reutilizable
+const LoginButton = ({ 
+  message = "Debes iniciar sesión para realizar esta acción",
+  className = "",
+  variant = "default"
+}) => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleClick = () => {
+    toast({
+      title: "🔒 Acceso requerido",
+      description: message,
+      variant: "default",
+      position: "top-right",
+      duration: 4000,
+    });
+    navigate('/login');
+  };
+
+  return (
+    <Button
+      onClick={handleClick}
+      className={`bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold flex items-center gap-2 px-4 py-2 rounded-xl shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-300 ${className}`}
+      variant={variant}
+    >
+      <LogIn className="w-4 h-4" /> Iniciar sesión
+    </Button>
+  );
+};
+
+// ... (el resto del código permanece igual hasta el componente GalleryUserSection)
 
 const GalleryUserSection = () => {
   const { 
@@ -93,6 +129,7 @@ const GalleryUserSection = () => {
   } = useUserPhotos();
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -106,6 +143,34 @@ const GalleryUserSection = () => {
   const dropRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+
+   // =============================================
+  // AGREGAR ESTE USEEFFECT JUSTO AQUÍ
+  // =============================================
+  useEffect(() => {
+    if (selectedPhoto) {
+      const updatedPhoto = photos.find(p => p.id === selectedPhoto.id);
+      if (updatedPhoto) {
+        // Compara si hay cambios relevantes antes de actualizar
+        if (updatedPhoto.reaction_count !== selectedPhoto.reaction_count || 
+            JSON.stringify(updatedPhoto.reactions) !== JSON.stringify(selectedPhoto.reactions)) {
+          setSelectedPhoto(updatedPhoto);
+        }
+      }
+    }
+  }, [photos, selectedPhoto]);
+
+  const handleAuthRequired = (action: string) => {
+    toast({
+      title: "🔒 Autenticación requerida",
+      description: `Debes iniciar sesión para ${action}.`,
+      variant: "default",
+      position: "top-right",
+      duration: 4000,
+    });
+    navigate('/login');
+  };
+
   const resetUploadForm = () => {
     setUploadCaption('');
     setUploadFile(null);
@@ -114,6 +179,11 @@ const GalleryUserSection = () => {
   };
 
   const handleUpload = async () => {
+    if (!isAuthenticated) {
+      handleAuthRequired("subir fotos");
+      return;
+    }
+    
     if (!uploadFile || !uploadCaption.trim()) {
       toast({
         title: "📁 Información requerida",
@@ -175,13 +245,7 @@ const GalleryUserSection = () => {
 
   const handleLike = async (photoId: string) => {
     if (!isAuthenticated) {
-      toast({
-        title: "🔒 Autenticación requerida",
-        description: "Debes iniciar sesión para reaccionar a las fotos.",
-        variant: "destructive",
-        position: "bottom-right",
-        duration: 4000,
-      });
+      handleAuthRequired("reaccionar a las fotos");
       return;
     }
     await reactToPhoto(photoId);
@@ -189,6 +253,10 @@ const GalleryUserSection = () => {
 
   const handleDelete = async (photoId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!isAuthenticated) {
+      handleAuthRequired("eliminar fotos");
+      return;
+    }
     setConfirmDelete({ id: photoId });
   };
 
@@ -253,15 +321,20 @@ const GalleryUserSection = () => {
               Usuarios
             </span>
           </h2>
-          {isAuthenticated && (
+          {isAuthenticated ? (
             <Button
               onClick={() => setIsUploadOpen(true)}
               className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold flex items-center gap-2 px-5 py-2.5 rounded-xl shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-300"
             >
               <Plus className="w-5 h-5" /> Subir Foto
             </Button>
+          ) : (
+            <LoginButton message="Inicia sesión para subir fotos a la galería" />
           )}
         </div>
+
+        {/* Banner de invitación para San Juan Tahitic */}
+        {!isAuthenticated && <InvitationBanner />}
 
         {/* Grid tipo collage */}
         {photos.length === 0 ? (
@@ -270,13 +343,34 @@ const GalleryUserSection = () => {
               <Image className="w-16 h-16 text-gray-400" />
             </div>
             <p className="text-lg text-gray-600">No hay fotos en la galería todavía.</p>
-            {isAuthenticated && (
+            {isAuthenticated ? (
               <Button
                 onClick={() => setIsUploadOpen(true)}
                 className="mt-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"
               >
                 Sé el primero en subir una foto
               </Button>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3 }}
+                className="mt-6"
+              >
+                <div className="bg-gradient-to-r from-indigo-100 to-purple-100 p-6 rounded-2xl border border-indigo-200/50 mb-6">
+                  <h3 className="text-xl font-semibold text-indigo-800 mb-2 flex items-center justify-center gap-2">
+                    <MapPin className="w-5 h-5" />
+                    ¡Sé parte de la historia de San Juan Tahitic!
+                  </h3>
+                  <p className="text-gray-700 mb-4">
+                    Comparte tus fotografías y ayuda a preservar los recuerdos de nuestra comunidad
+                  </p>
+                  <LoginButton 
+                    message="Únete para compartir tus fotos de San Juan Tahitic" 
+                    className="mx-auto"
+                  />
+                </div>
+              </motion.div>
             )}
           </div>
         ) : (
@@ -359,78 +453,111 @@ const GalleryUserSection = () => {
             </AnimatePresence>
           </div>
         )}
+
+        {/* Invitación adicional para usuarios no autenticados cuando hay fotos */}
+        {!isAuthenticated && photos.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mt-12 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 p-8 rounded-2xl border border-indigo-200 text-center"
+          >
+            <Camera className="w-12 h-12 text-indigo-500 mx-auto mb-4" />
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">¿Tienes fotos de San Juan Tahitic?</h3>
+            <p className="text-gray-700 mb-6 max-w-2xl mx-auto">
+              Comparte tus imágenes con la comunidad y forma parte de este archivo visual de nuestro pueblo
+            </p>
+            <LoginButton 
+              message="Únete para compartir tus fotos de San Juan Tahitic" 
+              className="mx-auto"
+            />
+          </motion.div>
+        )}
       </div>
 
       {/* Modal de subida */}
       <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-center">Subir foto</DialogTitle>
+            <DialogTitle className="text-center">Subir foto de San Juan Tahitic</DialogTitle>
             <DialogDescription className="sr-only">Formulario para subir una nueva foto</DialogDescription>
           </DialogHeader>
           <div className="p-6 bg-gradient-to-tr from-purple-100 via-indigo-50 to-pink-50 rounded-xl">
-            <div
-              ref={dropRef}
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-purple-400 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:border-purple-600 transition-colors relative"
-            >
-              <UploadCloud className="w-10 h-10 mb-2 text-purple-500" />
-              <p className="text-purple-700 text-center">Arrastra y suelta la foto aquí, o haz clic</p>
-              <Input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleFileChange(e.target.files?.[0] || undefined)}
-                className="hidden"
-              />
-              {previewUrl && (
-                <div className="relative mt-4 w-full">
-                  <img src={previewUrl} alt="Vista previa" className="w-full h-40 object-cover rounded-md shadow-lg" />
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPreviewUrl(null);
-                      setUploadFile(null);
-                    }}
-                    className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+            {!isAuthenticated ? (
+              <div className="text-center py-8">
+                <div className="flex justify-center mb-4">
+                  <LogIn className="w-12 h-12 text-indigo-500" />
                 </div>
-              )}
-            </div>
-            <div className="mt-4">
-              <Textarea
-                placeholder="Escribe una descripción para tu foto..."
-                value={uploadCaption}
-                onChange={(e) => setUploadCaption(e.target.value)}
-                rows={3}
-                className="bg-white/30 backdrop-blur-sm border border-white/20 rounded-md text-black placeholder:text-black/50"
-              />
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={resetUploadForm}>Cancelar</Button>
-              <Button
-                onClick={handleUpload}
-                disabled={!uploadFile || !uploadCaption.trim() || uploading}
-                className="bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500 text-white"
-              >
-                {uploading ? (
-                  <>
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
-                    />
-                    Subiendo...
-                  </>
-                ) : (
-                  'Subir'
-                )}
-              </Button>
-            </div>
+                <h3 className="text-xl font-semibold mb-2">Inicia sesión para subir fotos</h3>
+                <p className="text-gray-600 mb-4">Necesitas una cuenta para compartir tus imágenes de San Juan Tahitic.</p>
+                <LoginButton message="Inicia sesión para subir fotos a la galería" />
+              </div>
+            ) : (
+              <>
+                <div
+                  ref={dropRef}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-purple-400 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:border-purple-600 transition-colors relative"
+                >
+                  <UploadCloud className="w-10 h-10 mb-2 text-purple-500" />
+                  <p className="text-purple-700 text-center">Arrastra y suelta la foto aquí, o haz clic</p>
+                  <Input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleFileChange(e.target.files?.[0] || undefined)}
+                    className="hidden"
+                  />
+                  {previewUrl && (
+                    <div className="relative mt-4 w-full">
+                      <img src={previewUrl} alt="Vista previa" className="w-full h-40 object-cover rounded-md shadow-lg" />
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewUrl(null);
+                          setUploadFile(null);
+                        }}
+                        className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-4">
+                  <Textarea
+                    placeholder="Describe tu foto de San Juan Tahitic..."
+                    value={uploadCaption}
+                    onChange={(e) => setUploadCaption(e.target.value)}
+                    rows={3}
+                    className="bg-white/30 backdrop-blur-sm border border-white/20 rounded-md text-black placeholder:text-black/50"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button variant="outline" onClick={resetUploadForm}>Cancelar</Button>
+                  <Button
+                    onClick={handleUpload}
+                    disabled={!uploadFile || !uploadCaption.trim() || uploading}
+                    className="bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500 text-white"
+                  >
+                    {uploading ? (
+                      <>
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
+                        />
+                        Subiendo...
+                      </>
+                    ) : (
+                      'Subir'
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>

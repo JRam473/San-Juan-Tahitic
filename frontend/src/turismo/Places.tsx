@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, Clock, Users, ExternalLink, AlertCircle, Star, BarChart3, X, Maximize2 } from 'lucide-react';
+import { MapPin, Clock, Users, ExternalLink, AlertCircle, Star, BarChart3, X, Maximize2, LogIn, ThumbsUp } from 'lucide-react';
 import { usePlaces } from '@/hooks/usePlaces';
 import { useAuth } from '@/hooks/useAuth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -16,6 +16,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 // Componente de esqueleto para lugares
 const PlaceSkeletonGrid = ({ count }: { count: number }) => (
@@ -229,14 +231,89 @@ const ImageModal = ({
   );
 };
 
+// Componente de invitación para valoraciones
+const RatingInvitationBanner = ({ theme, onLoginRedirect }: { 
+  theme: 'default' | 'nature' | 'beach' | 'cultural'; 
+  onLoginRedirect: () => void;
+}) => {
+  const themeClasses = {
+    default: {
+      bg: 'bg-gradient-to-r from-blue-100/80 via-indigo-100/80 to-purple-100/80',
+      border: 'border-blue-200/30',
+      button: 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700'
+    },
+    nature: {
+      bg: 'bg-gradient-to-r from-green-100/80 via-emerald-100/80 to-teal-100/80',
+      border: 'border-green-200/30',
+      button: 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700'
+    },
+    beach: {
+      bg: 'bg-gradient-to-r from-blue-100/80 via-cyan-100/80 to-sky-100/80',
+      border: 'border-blue-200/30',
+      button: 'bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700'
+    },
+    cultural: {
+      bg: 'bg-gradient-to-r from-amber-100/80 via-orange-100/80 to-red-100/80',
+      border: 'border-amber-200/30',
+      button: 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700'
+    }
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      className="mb-10"
+    >
+      <div className={`${themeClasses[theme].bg} backdrop-blur-sm shadow-lg hover:shadow-2xl border ${themeClasses[theme].border} transition-all duration-500 overflow-hidden rounded-2xl p-8`}>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex-1 text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
+              <ThumbsUp className="w-8 h-8 text-blue-600" />
+              <h3 className="text-2xl font-bold text-gray-800">¡Tu opinión cuenta!</h3>
+            </div>
+            <p className="text-gray-700 mb-4">
+              Comparte tu experiencia en los lugares que has visitado en San Juan Tahitic. 
+              Ayuda a otros viajeros a descubrir los mejores rincones de nuestro pueblo.
+            </p>
+            <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">#Experiencias</span>
+              <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm">#Recomendaciones</span>
+              <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">#Comunidad</span>
+            </div>
+          </div>
+          
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Button
+              onClick={onLoginRedirect}
+              className={`${themeClasses[theme].button} text-white font-semibold flex items-center gap-2 px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300`}
+            >
+              <LogIn className="w-5 h-5" /> Iniciar sesión para valorar
+            </Button>
+          </motion.div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
 const Places = () => {
   const { places, loading, error, ratePlace, getUserRating, getRatingStats, isRating } = usePlaces();
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [userRatings, setUserRatings] = useState<Record<string, number>>({});
   const [ratingStats, setRatingStats] = useState<Record<string, any>>({});
   const [selectedImage, setSelectedImage] = useState<{ src: string; alt: string } | null>(null);
   const [theme, setTheme] = useState<'default' | 'nature' | 'beach' | 'cultural'>('default');
+
+  const handleLoginRedirect = () => {
+    navigate('/login');
+  };
 
   // Determinar tema basado en las categorías de lugares
   useEffect(() => {
@@ -464,6 +541,14 @@ const Places = () => {
               Descubre los rincones más fascinantes de San Juan Tahitic, cada uno con su propia magia y experiencias únicas.
             </p>
           </div>
+
+          {/* SECCIÓN DE INVITACIÓN PARA VALORACIONES */}
+          {!user && (
+            <RatingInvitationBanner 
+              theme={theme} 
+              onLoginRedirect={handleLoginRedirect} 
+            />
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {places.map((place) => {
