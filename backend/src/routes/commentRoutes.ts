@@ -12,6 +12,7 @@ import {
   getCommentReactions, 
   addCommentReaction, 
   removeCommentReaction, 
+  getCommentReactionCount,
   removeCommentReactionByComment 
 } from '../controllers/reactionController';
 import { authenticateToken } from '../middleware/auth';
@@ -30,7 +31,8 @@ router.delete('/:id', authenticateToken, deleteComment);
 // Comment reactions
 router.get('/:commentId/reactions', getCommentReactions);
 router.post('/:commentId/reactions', authenticateToken, addCommentReaction);
-router.delete('/reactions/:reactionId', authenticateToken, removeCommentReaction); // por ID de reacción
-router.delete('/:commentId/reactions', authenticateToken, removeCommentReactionByComment); // todas de un comment
+router.get('/:commentId/reaction-count', getCommentReactionCount); // Nueva ruta
+router.delete('/:commentId/reaction', removeCommentReactionByComment); // Eliminar específico
+router.delete('/:reactionId', removeCommentReaction); // Eliminar por ID de reacción
 
 export default router;

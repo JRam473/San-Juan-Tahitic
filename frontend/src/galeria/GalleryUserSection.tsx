@@ -55,7 +55,7 @@ const ConfirmDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onCancel}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md bg-white/30 backdrop-blur-sm border border-white/20 p-2 text-gray-900 dark:text-gray-100 dark:bg-black/30 dark:border-gray-700 shadow-lg rounded-md">
         <DialogHeader className="flex flex-row items-center gap-3">
           <div className={styles.title}>
             {styles.icon}

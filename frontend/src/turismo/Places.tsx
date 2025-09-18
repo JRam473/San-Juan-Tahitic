@@ -119,7 +119,7 @@ const RatingStatsDialog = ({ placeId, placeName, stats, variant = "default" }: {
           Ver estadísticas
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md bg-white/30 backdrop-blur-sm border border-white/20 p-2 text-gray-900 dark:text-gray-100 shadow-lg rounded-md">
+      <DialogContent className="sm:max-w-md bg-white/30 backdrop-blur-sm border border-white/20 p-2 text-gray-900 dark:text-gray-100 dark:bg-black/30 dark:border-gray-700 shadow-lg rounded-md">
         <DialogHeader>
           <DialogTitle className={cn({
             "text-primary-foreground": variant === "primary",

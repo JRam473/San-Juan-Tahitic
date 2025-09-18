@@ -43,7 +43,7 @@ export const getPhotoReactions = async (req: Request, res: Response) => {
 
 export const addCommentReaction = async (req: Request, res: Response) => {
   try {
-    console.log('=== INICIO addCommentReaction ===');
+    console.log('=== addCommentReaction (TOGGLE) ===');
     console.log('Headers:', req.headers);
     console.log('Params:', req.params);
     console.log('Body:', req.body);
@@ -72,21 +72,58 @@ export const addCommentReaction = async (req: Request, res: Response) => {
     );
 
     if (existingReaction.rows.length > 0) {
-      console.log('ERROR: Ya existe una reacción');
-      return res.status(400).json({ message: 'Ya has reaccionado a este comentario' });
+      // Si ya existe una reacción, la eliminamos (toggle off)
+      console.log('Eliminando reacción existente...');
+      const deleteResult = await query(
+        'DELETE FROM comment_reactions WHERE user_id = $1 AND comment_id = $2 RETURNING *',
+        [userId, commentId]
+      );
+      
+      res.json({ 
+        message: 'Reacción eliminada', 
+        reaction: deleteResult.rows[0],
+        action: 'removed'
+      });
+    } else {
+      // Si no existe reacción, la creamos (toggle on)
+      console.log('Creando nueva reacción...');
+      const result = await query(
+        'INSERT INTO comment_reactions (user_id, comment_id, reaction_type) VALUES ($1, $2, $3) RETURNING *',
+        [userId, commentId, reaction_type]
+      );
+
+      console.log('Reacción insertada:', result.rows[0]);
+      res.status(201).json({ 
+        message: 'Reacción agregada', 
+        reaction: result.rows[0],
+        action: 'added'
+      });
     }
 
-    console.log('Insertando nueva reacción...');
-    const result = await query(
-      'INSERT INTO comment_reactions (user_id, comment_id, reaction_type) VALUES ($1, $2, $3) RETURNING *',
-      [userId, commentId, reaction_type]
-    );
-
-    console.log('Reacción insertada:', result.rows[0]);
-    res.status(201).json({ message: 'Reacción agregada', reaction: result.rows[0] });
-
   } catch (error) {
-    console.error('Error en addCommentReaction:', error);
+    console.error('Error en toggle de reacción de comentario:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+};
+ 
+
+export const getCommentReactionCount = async (req: Request, res: Response) => {
+  try {
+    const { commentId } = req.params;
+    
+    const result = await query(`
+      SELECT reaction_type, COUNT(*) 
+      FROM comment_reactions 
+      WHERE comment_id = $1 
+      GROUP BY reaction_type
+    `, [commentId]);
+
+    res.json({ 
+      counts: result.rows,
+      total: result.rows.reduce((sum, row) => sum + parseInt(row.count), 0)
+    });
+  } catch (error) {
+    console.error('Error obteniendo contadores de reacciones de comentario:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 };
@@ -161,11 +198,31 @@ export const removePhotoReactionByPhoto = async (req: Request, res: Response) =>
 
     if (result.rows.length === 0) {
       console.log('Reacción no encontrada para eliminar');
-      return res.status(404).json({ message: 'Reacción no encontrada' });
+      return res.status(404).json({ 
+        message: 'Reacción no encontrada',
+        action: 'none' // Indica que no había reacción para eliminar
+      });
     }
 
     console.log('Reacción eliminada exitosamente:', result.rows[0]);
-    res.json({ message: 'Reacción eliminada', action: 'removed' });
+    
+    // Obtener el nuevo conteo después de eliminar
+    const countResult = await query(`
+      SELECT reaction_type, COUNT(*) 
+      FROM photo_reactions 
+      WHERE photo_id = $1 
+      GROUP BY reaction_type
+    `, [photoId]);
+
+    const counts = countResult.rows;
+    const total = counts.reduce((sum, row) => sum + parseInt(row.count), 0);
+    
+    res.json({ 
+      message: 'Reacción eliminada', 
+      action: 'removed',
+      counts,
+      total
+    });
   } catch (error) {
     console.error('Error eliminando reacción de la foto:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
@@ -240,7 +297,10 @@ export const removeCommentReactionByComment = async (req: Request, res: Response
     }
 
     console.log('Reacción eliminada exitosamente:', result.rows[0]);
-    res.json({ message: 'Reacción eliminada' });
+    res.json({ 
+      message: 'Reacción eliminada',
+      action: 'removed'
+    });
   } catch (error) {
     console.error('Error eliminando reacción del comentario:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
