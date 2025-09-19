@@ -1,3 +1,4 @@
+// backend/src/routes/authRoutes.ts
 import express from 'express';
 import passport from 'passport';
 import { register, login, getProfile } from '../controllers/authController';

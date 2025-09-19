@@ -1,3 +1,4 @@
+//AuthButton.tsx
 import { useAuth } from './hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -46,26 +47,30 @@ export const AuthButton = () => {
             <span className="font-medium hidden md:block">{displayName}</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link to="/profile">Perfil</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to="/settings">Configuración</Link>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem 
-            onClick={() => {
-              signOut();
-              navigate('/');
-            }}
-            className="text-red-600 focus:text-red-600"
-          >
-            Cerrar Sesión
-          </DropdownMenuItem>
-        </DropdownMenuContent>
+        <DropdownMenuContent
+  align="end"
+  className="w-56 bg-white/30 backdrop-blur-sm border border-white/20 p-2 text-gray-900 dark:text-gray-100 dark:bg-black/30 dark:border-gray-700 shadow-lg rounded-md"
+>
+  <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+  <DropdownMenuSeparator />
+  <DropdownMenuItem asChild>
+    <Link to="/profile">Perfil</Link>
+  </DropdownMenuItem>
+  <DropdownMenuItem asChild>
+    <Link to="/settings">Configuración</Link>
+  </DropdownMenuItem>
+  <DropdownMenuSeparator />
+  <DropdownMenuItem 
+    onClick={() => {
+      signOut();
+      navigate('/');
+    }}
+    className="text-red-600 focus:text-red-600"
+  >
+    Cerrar Sesión
+  </DropdownMenuItem>
+</DropdownMenuContent>
+
       </DropdownMenu>
     );
   }

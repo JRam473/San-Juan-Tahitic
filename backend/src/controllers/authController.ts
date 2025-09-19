@@ -1,3 +1,4 @@
+// backend/src/controllers/authController.ts
 import { Request, Response } from 'express';
 import { query } from '../utils/db';
 import { hashPassword, comparePassword } from '../utils/hashPassword';

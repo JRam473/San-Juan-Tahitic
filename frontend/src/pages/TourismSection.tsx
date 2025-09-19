@@ -2,6 +2,7 @@ import  Places  from '../turismo/Places';
 import { AdventureActivities } from '../turismo/AdventureActivities ';
 
 
+
 export function TourismSection() {
   return (
     <>
