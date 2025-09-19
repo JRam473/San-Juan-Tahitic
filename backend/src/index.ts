@@ -27,7 +27,6 @@ import commentRoutes from './routes/commentRoutes';
 import ratingRoutes from './routes/ratingRoutes';
 import { configureGoogleOAuth, checkGoogleConfig } from './utils/oauth';
 
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
