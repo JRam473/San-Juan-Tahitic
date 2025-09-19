@@ -31,13 +31,19 @@ interface ApiResponse {
   message?: string;
 }
 
-interface ReactionsResponse {
-  reactions: any[];
-}
+// Interfaces eliminadas ya que no se usan
+// interface ReactionsResponse {
+//   reactions: any[];
+// }
 
-interface ReactionCountResponse {
-  counts: Array<{ reaction_type: string; count: number }>;
-  total: number;
+// interface ReactionCountResponse {
+//   counts: Array<{ reaction_type: string; count: number }>;
+//   total: number;
+// }
+
+interface ReactionResponse {
+  action: 'added' | 'removed';
+  message?: string;
 }
 
 export const useComments = (placeId?: string) => {
@@ -273,7 +279,7 @@ export const useComments = (placeId?: string) => {
     try {
       setReactingComments(prev => ({ ...prev, [commentId]: true }));
       
-      const response = await api.post(`/api/comments/${commentId}/reactions`, { 
+      const response = await api.post<ReactionResponse>(`/api/comments/${commentId}/reactions`, { 
         reaction_type: 'like' 
       });
 
@@ -306,10 +312,16 @@ export const useComments = (placeId?: string) => {
       }
 
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error en reactToComment:', err);
       
-      const errorMessage = err.response?.data?.message || err.message || 'Error al procesar la reacción';
+      let errorMessage = 'Error al procesar la reacción';
+      if (err && typeof err === 'object' && 'response' in err) {
+        const errorObj = err as { response?: { data?: { message?: string } } };
+        errorMessage = errorObj.response?.data?.message || errorMessage;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
       
       toast({
         title: "Error",

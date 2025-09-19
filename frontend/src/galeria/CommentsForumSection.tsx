@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Heart, Edit3, Trash2, X, Save, User, Calendar, MessageCircle, LogIn, MessageSquare } from 'lucide-react';
+import { Send, Heart, Edit3, Trash2, X, Save, User, Calendar, MessageCircle, LogIn, MessageSquare, AlertTriangle, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { useComments, type Comment } from '@/hooks/useComments';
@@ -259,13 +259,13 @@ const CommentsForumSection = ({ placeId }: { placeId?: string } = {}) => {
           </motion.div>
         )}
 
-        {/* Lista de comentarios */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <AnimatePresence>
-            {comments.length > 0 ? (
-              comments.map((comment: Comment, index: number) => (
+        {/* Lista de comentarios - VERSIÓN CORREGIDA */}
+        <AnimatePresence mode="wait">
+          {comments.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {comments.map((comment: Comment, index: number) => (
                 <motion.div
-                  key={comment.id}
+                  key={`comment-${comment.id}-${index}`}
                   layout
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -365,26 +365,31 @@ const CommentsForumSection = ({ placeId }: { placeId?: string } = {}) => {
                     </CardContent>
                   </Card>
                 </motion.div>
-              ))
-            ) : (
-              <div className="col-span-2 text-center py-10 text-gray-500 flex flex-col items-center">
-                <MessageCircle className="w-12 h-12 text-gray-400 mb-4" />
-                <p>No hay comentarios todavía.</p>
-                <p className="mt-2">
-                  {user ? '¡Sé el primero en comentar!' : 'Inicia sesión para ser el primero en comentar.'}
-                </p>
-                {!user && (
-                  <Button
-                    onClick={handleLoginRedirect}
-                    className="mt-4 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white"
-                  >
-                    <LogIn className="w-4 h-4 mr-2" /> Iniciar sesión
-                  </Button>
-                )}
-              </div>
-            )}
-          </AnimatePresence>
-        </div>
+              ))}
+            </div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="col-span-2 text-center py-10 text-gray-500 flex flex-col items-center"
+            >
+              <MessageCircle className="w-12 h-12 text-gray-400 mb-4" />
+              <p>No hay comentarios todavía.</p>
+              <p className="mt-2">
+                {user ? '¡Sé el primero en comentar!' : 'Inicia sesión para ser el primero en comentar.'}
+              </p>
+              {!user && (
+                <Button
+                  onClick={handleLoginRedirect}
+                  className="mt-4 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white"
+                >
+                  <LogIn className="w-4 h-4 mr-2" /> Iniciar sesión
+                </Button>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Confirm Modal */}

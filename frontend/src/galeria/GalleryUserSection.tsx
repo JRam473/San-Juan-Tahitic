@@ -1,15 +1,85 @@
 // GalleryUserSection.tsx
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Heart, X, Trash2, UploadCloud, Edit3, User, Calendar, Image, LogIn, Camera, MapPin } from 'lucide-react';
+import { Plus, Heart, X, Trash2, UploadCloud, Edit3, User, Calendar, Image, LogIn, Camera, MapPin, AlertTriangle, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUserPhotos } from '@/hooks/useUserPhotos';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+
+// --------------------- Confirm Dialog ---------------------
+const ConfirmDialog = ({
+  isOpen,
+  onConfirm,
+  onCancel,
+  message,
+  type = 'danger'
+}: {
+  isOpen: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+  message: string;
+  type?: 'danger' | 'warning' | 'info';
+}) => {
+  const getStyles = () => {
+    switch (type) {
+      case 'danger':
+        return {
+          button: 'bg-red-600 hover:bg-red-700 text-white',
+          icon: <AlertTriangle className="w-5 h-5 text-red-600" />,
+          title: 'text-red-700'
+        };
+      case 'warning':
+        return {
+          button: 'bg-yellow-600 hover:bg-yellow-700 text-white',
+          icon: <AlertTriangle className="w-5 h-5 text-yellow-600" />,
+          title: 'text-yellow-700'
+        };
+      case 'info':
+        return {
+          button: 'bg-blue-600 hover:bg-blue-700 text-white',
+          icon: <Info className="w-5 h-5 text-blue-600" />,
+          title: 'text-blue-700'
+        };
+      default:
+        return {
+          button: 'bg-red-600 hover:bg-red-700 text-white',
+          icon: <AlertTriangle className="w-5 h-5 text-red-600" />,
+          title: 'text-red-700'
+        };
+    }
+  };
+
+  const styles = getStyles();
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onCancel}>
+      <DialogContent className="sm:max-w-md bg-white/30 backdrop-blur-sm border border-white/20 p-2 text-gray-900 dark:text-gray-100 dark:bg-black/30 dark:border-gray-700 shadow-lg rounded-md">
+        <DialogHeader className="flex flex-row items-center gap-3">
+          <div className={styles.title}>
+            {styles.icon}
+          </div>
+          <div>
+            <DialogTitle className={styles.title}>¿Estás seguro?</DialogTitle>
+            <DialogDescription>{message}</DialogDescription>
+          </div>
+        </DialogHeader>
+        <DialogFooter className="flex gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button className={styles.button} onClick={onConfirm}>
+            Eliminar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 // Componente de invitación con animación
 const InvitationBanner = () => {
