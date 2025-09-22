@@ -1,4 +1,4 @@
-// components/CommentsForumSection.tsx
+// components/CommentsForumSection.tsx - VERSIÓN COMPLETAMENTE CORREGIDA
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -259,120 +259,124 @@ const CommentsForumSection = ({ placeId }: { placeId?: string } = {}) => {
           </motion.div>
         )}
 
-        {/* Lista de comentarios - VERSIÓN CORREGIDA */}
-        <AnimatePresence mode="wait">
+        {/* ✅ CORRECCIÓN: Lista de comentarios - VERSIÓN ESTABILIZADA */}
+        <div className="min-h-[200px]">
           {comments.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {comments.map((comment: Comment, index: number) => (
-                <motion.div
-                  key={`comment-${comment.id}-${index}`}
-                  layout
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.4, delay: index * 0.1 }}
-                >
-                  <Card className="group relative bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-2xl border border-white/20 transition-all duration-500 overflow-hidden">
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                          <User className="w-5 h-5 text-amber-600" />
-                          {comment.username}
-                        </CardTitle>
-                        <span className="flex items-center gap-1 text-sm text-gray-500">
-                          <Calendar className="w-4 h-4" />
-                          {new Date(comment.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pt-2">
-                      {editingCommentId === comment.id ? (
-                        <div className="space-y-4">
-                          <Textarea
-                            value={editingContent}
-                            onChange={(e) => setEditingContent(e.target.value)}
-                            rows={3}
-                            className="bg-white/30 backdrop-blur-sm border border-white/20 rounded-md text-black placeholder:text-black/50 focus:ring-2 focus:ring-rose-400 transition-all duration-300"
-                          />
-                          <div className="flex gap-2">
-                            <Button 
-                              onClick={handleSaveEdit} 
-                              disabled={!editingContent.trim()}
-                              className="bg-gradient-to-r from-green-500 to-emerald-600 text-white"
-                            >
-                              <Save className="w-4 h-4 mr-2" /> Guardar
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              onClick={() => setEditingCommentId(null)}
-                              className="border-gray-300"
-                            >
-                              <X className="w-4 h-4 mr-2" /> Cancelar
-                            </Button>
-                          </div>
+              <AnimatePresence> {/* ✅ REMOVIDO mode="wait" que causaba conflictos */}
+                {comments.map((comment: Comment) => (
+                  <motion.div
+                    key={`comment-${comment.id}`} 
+                    layout
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    <Card className="group relative bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-2xl border border-white/20 transition-all duration-500 overflow-hidden">
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-start">
+                          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                            <User className="w-5 h-5 text-amber-600" />
+                            {comment.username}
+                          </CardTitle>
+                          <span className="flex items-center gap-1 text-sm text-gray-500">
+                            <Calendar className="w-4 h-4" />
+                            {new Date(comment.created_at).toLocaleDateString()}
+                          </span>
                         </div>
-                      ) : (
-                        <>
-                          <div className="flex items-start gap-3 mb-4">
-                            <MessageCircle className="w-5 h-5 text-amber-600 mt-1 flex-shrink-0" />
-                            <p className="text-gray-700 leading-relaxed">{comment.content}</p>
+                      </CardHeader>
+                      <CardContent className="pt-2">
+                        {editingCommentId === comment.id ? (
+                          <div className="space-y-4">
+                            <Textarea
+                              value={editingContent}
+                              onChange={(e) => setEditingContent(e.target.value)}
+                              rows={3}
+                              className="bg-white/30 backdrop-blur-sm border border-white/20 rounded-md text-black placeholder:text-black/50 focus:ring-2 focus:ring-rose-400 transition-all duration-300"
+                            />
+                            <div className="flex gap-2">
+                              <Button 
+                                onClick={handleSaveEdit} 
+                                disabled={!editingContent.trim()}
+                                className="bg-gradient-to-r from-green-500 to-emerald-600 text-white"
+                              >
+                                <Save className="w-4 h-4 mr-2" /> Guardar
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                onClick={() => setEditingCommentId(null)}
+                                className="border-gray-300"
+                              >
+                                <X className="w-4 h-4 mr-2" /> Cancelar
+                              </Button>
+                            </div>
                           </div>
-                          
-                          <div className="flex justify-between items-center">
-                            <motion.button
-                              onClick={() => handleReact(comment.id)}
-                              disabled={reactingComments[comment.id]}
-                              whileTap={{ scale: 0.9 }}
-                              className={`flex items-center gap-2 transition-colors duration-300 ${
-                                comment.user_has_reacted ? 'text-rose-500' : 'text-gray-500 hover:text-rose-400'
-                              }`}
-                            >
-                              {reactingComments[comment.id] ? (
-                                <motion.div
-                                  animate={{ rotate: 360 }}
-                                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                  className="w-5 h-5 border-2 border-current border-t-transparent rounded-full"
-                                />
-                              ) : (
-                                <Heart className={`w-5 h-5 ${comment.user_has_reacted ? 'fill-current' : ''}`} />
-                              )}
-                              <span>{Number(comment.reaction_count) || 0}</span>
-                            </motion.button>
+                        ) : (
+                          <>
+                            <div className="flex items-start gap-3 mb-4">
+                              <MessageCircle className="w-5 h-5 text-amber-600 mt-1 flex-shrink-0" />
+                              <p className="text-gray-700 leading-relaxed">{comment.content}</p>
+                            </div>
                             
-                            {user && canEditComment(comment) && (
-                              <div className="flex gap-2">
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => { setEditingCommentId(comment.id); setEditingContent(comment.content); }}
-                                  className="text-gray-600 hover:text-amber-600"
-                                >
-                                  <Edit3 className="w-4 h-4 mr-1" /> Editar
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => handleDelete(comment.id)}
-                                  className="text-gray-600 hover:text-rose-600"
-                                >
-                                  <Trash2 className="w-4 h-4 mr-1" /> Eliminar
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+                            <div className="flex justify-between items-center">
+                              <motion.button
+                                onClick={() => handleReact(comment.id)}
+                                disabled={reactingComments[comment.id]}
+                                whileTap={{ scale: 0.9 }}
+                                className={`flex items-center gap-2 transition-colors duration-300 ${
+                                  comment.user_has_reacted ? 'text-rose-500' : 'text-gray-500 hover:text-rose-400'
+                                }`}
+                              >
+                                {reactingComments[comment.id] ? (
+                                  <motion.div
+                                    animate={{ rotate: 360 }}
+                                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                    className="w-5 h-5 border-2 border-current border-t-transparent rounded-full"
+                                  />
+                                ) : (
+                                  <Heart className={`w-5 h-5 ${comment.user_has_reacted ? 'fill-current' : ''}`} />
+                                )}
+                                <span>{Number(comment.reaction_count) || 0}</span>
+                              </motion.button>
+                              
+                              {user && canEditComment(comment) && (
+                                <div className="flex gap-2">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => { setEditingCommentId(comment.id); setEditingContent(comment.content); }}
+                                    className="text-gray-600 hover:text-amber-600"
+                                  >
+                                    <Edit3 className="w-4 h-4 mr-1" /> Editar
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => handleDelete(comment.id)}
+                                    className="text-gray-600 hover:text-rose-600"
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-1" /> Eliminar
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
           ) : (
+            /* ✅ CORRECCIÓN: Estado vacío separado - sin AnimatePresence conflictivo */
             <motion.div
+              key="no-comments-state" 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="col-span-2 text-center py-10 text-gray-500 flex flex-col items-center"
+              transition={{ duration: 0.5 }}
+              className="text-center py-10 text-gray-500 flex flex-col items-center"
             >
               <MessageCircle className="w-12 h-12 text-gray-400 mb-4" />
               <p>No hay comentarios todavía.</p>
@@ -389,19 +393,28 @@ const CommentsForumSection = ({ placeId }: { placeId?: string } = {}) => {
               )}
             </motion.div>
           )}
-        </AnimatePresence>
+        </div>
       </div>
 
-      {/* Confirm Modal */}
-      {confirmDelete && (
-        <ConfirmDialog
-          isOpen={!!confirmDelete}
-          onConfirm={confirmDeleteAction}
-          onCancel={() => setConfirmDelete(null)}
-          message="Esta acción eliminará tu comentario de forma permanente."
-          type="danger"
-        />
-      )}
+      {/* ✅ CORRECCIÓN: Confirm Modal con AnimatePresence mejorado */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <motion.div
+            key="confirm-dialog"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <ConfirmDialog
+              isOpen={!!confirmDelete}
+              onConfirm={confirmDeleteAction}
+              onCancel={() => setConfirmDelete(null)}
+              message="Esta acción eliminará tu comentario de forma permanente."
+              type="danger"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 };

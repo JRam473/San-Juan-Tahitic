@@ -1,4 +1,4 @@
-// hooks/useUserPhotos.ts
+// hooks/useUserPhotos.ts - VERSIÓN COMPLETAMENTE CORREGIDA
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -28,23 +28,6 @@ interface ReactionCount {
   count: number;
 }
 
-// Interfaces para las respuestas de la API
-interface ApiResponse<T> {
-  data: T;
-  status: number;
-  statusText: string;
-  headers: any;
-  config: any;
-}
-
-interface ReactionsResponse {
-  reactions: PhotoReaction[];
-}
-
-interface ReactionCountResponse {
-  counts: ReactionCount[];
-}
-
 interface PhotosResponse {
   photos: Photo[];
 }
@@ -68,7 +51,7 @@ export const useUserPhotos = () => {
   const { toast } = useToast();
 
   // =============================
-  // Fetch all photos with reactions
+  // ✅ CORRECCIÓN: Fetch optimizado
   // =============================
   const fetchPhotos = useCallback(async () => {
     try {
@@ -76,32 +59,22 @@ export const useUserPhotos = () => {
       setError(null);
 
       const response = await api.get<PhotosResponse>('/api/photos');
-      const photosData: Photo[] = response.data.photos || [];
       
-      const photosWithReactions = await Promise.all(
-        photosData.map(async (photo) => {
-          try {
-            const reactionsResponse = await api.get<ReactionsResponse>(`/api/photos/${photo.id}/reactions`);
-            const reactionCountResponse = await api.get<ReactionCountResponse>(`/api/photos/${photo.id}/reaction-count`);
-            
-            const counts = reactionCountResponse.data.counts || [];
-            const reactionCount = counts.reduce(
-              (total: number, item: ReactionCount) => total + item.count, 0
-            );
-            
-            return {
-              ...photo,
-              reactions: reactionsResponse.data.reactions || [],
-              reaction_count: reactionCount
-            };
-          } catch (error) {
-            console.error(`Error fetching reactions for photo ${photo.id}:`, error);
-            return { ...photo, reactions: [], reaction_count: 0 };
-          }
-        })
-      );
+      if (!response.data || !Array.isArray(response.data.photos)) {
+        setPhotos([]);
+        return;
+      }
+
+      const photosData: Photo[] = response.data.photos;
       
-      setPhotos(photosWithReactions);
+      // ✅ SIMPLIFICAR: Cargar reacciones básicas sin complejidad
+      const photosWithDefaults = photosData.map(photo => ({
+        ...photo,
+        reactions: photo.reactions || [],
+        reaction_count: photo.reaction_count || 0
+      }));
+      
+      setPhotos(photosWithDefaults);
     } catch (err: unknown) {
       const errorMessage = (err as ErrorResponse)?.response?.data?.message || 'Error al cargar las fotos';
       setError(errorMessage);
@@ -109,9 +82,6 @@ export const useUserPhotos = () => {
         title: "❌ Error",
         description: errorMessage,
         variant: "destructive",
-        position: "top-right",
-        duration: 5000,
-        showIcon: true,
       });
     } finally {
       setLoading(false);
@@ -119,37 +89,7 @@ export const useUserPhotos = () => {
   }, [toast]);
 
   // =============================
-  // Optimized update for reactions (avoid full refetch)
-  // =============================
-// En tu updatePhotoReactions, asegúrate de procesar correctamente los counts
-const updatePhotoReactions = async (photoId: string) => {
-  try {
-    const reactionsResponse = await api.get<ReactionsResponse>(`/api/photos/${photoId}/reactions`);
-    const reactionCountResponse = await api.get<ReactionCountResponse>(`/api/photos/${photoId}/reaction-count`);
-    
-    const counts = reactionCountResponse.data.counts || [];
-    console.log('📊 Respuesta de counts:', reactionCountResponse.data);
-    const reactionCount = counts.reduce(
-      (total: number, item: ReactionCount) => total + item.count, 0
-    );
-    
-    setPhotos(prev => prev.map(photo => 
-      photo.id === photoId 
-        ? { 
-            ...photo, 
-            reactions: reactionsResponse.data.reactions || [],
-            reaction_count: reactionCount, // Esto actualiza el contador
-            reaction_counts: counts // Guarda también los counts por tipo si los necesitas
-          } 
-        : photo
-    ));
-  } catch (error) {
-    console.error(`Error updating reactions for photo ${photoId}:`, error);
-  }
-};
-
-  // =============================
-  // Upload photo
+  // ✅ CORRECCIÓN: Upload photo - Actualización LOCAL
   // =============================
   const uploadPhoto = async (file: File, caption: string, place_id?: string) => {
     if (!isAuthenticated || !user) {
@@ -157,9 +97,6 @@ const updatePhotoReactions = async (photoId: string) => {
         title: "🔒 Autenticación requerida",
         description: "Debes iniciar sesión para subir fotos",
         variant: "destructive",
-        position: "bottom-right",
-        duration: 4000,
-        showIcon: true,
       });
       return false;
     }
@@ -169,9 +106,6 @@ const updatePhotoReactions = async (photoId: string) => {
         title: "📁 Archivo inválido",
         description: "Solo se permiten archivos de imagen",
         variant: "warning",
-        position: "top-right",
-        duration: 4000,
-        showIcon: true,
       });
       return false;
     }
@@ -181,9 +115,6 @@ const updatePhotoReactions = async (photoId: string) => {
         title: "📏 Archivo muy grande",
         description: "La imagen debe ser menor a 5MB",
         variant: "warning",
-        position: "top-right",
-        duration: 4000,
-        showIcon: true,
       });
       return false;
     }
@@ -197,18 +128,27 @@ const updatePhotoReactions = async (photoId: string) => {
         formData.append('place_id', place_id);
       }
 
-      await api.post('/api/photos', formData);
+      const response = await api.post<{ photo: Photo }>('/api/photos', formData);
+
+      if (!response.data.photo) {
+        throw new Error('No se recibió la foto creada del servidor');
+      }
+
+      // ✅ CORRECCIÓN: Agregar foto LOCALMENTE en lugar de recargar todo
+      const newPhoto = {
+        ...response.data.photo,
+        reactions: [],
+        reaction_count: 0,
+        username: user.username || 'Usuario'
+      };
+
+      setPhotos(prev => [newPhoto, ...prev]); // Agregar al inicio
 
       toast({
         title: "📸 ¡Foto subida!",
         description: "Tu foto se ha subido exitosamente",
-        variant: "photo",
-        position: "bottom-right",
-        duration: 3000,
-        showIcon: true,
       });
 
-      await fetchPhotos();
       return true;
     } catch (err: unknown) {
       const errorMessage = (err as ErrorResponse)?.response?.data?.message || 'Error al subir la foto';
@@ -216,9 +156,6 @@ const updatePhotoReactions = async (photoId: string) => {
         title: "❌ Error al subir",
         description: errorMessage,
         variant: "destructive",
-        position: "top-right",
-        duration: 5000,
-        showIcon: true,
       });
       return false;
     } finally {
@@ -227,7 +164,7 @@ const updatePhotoReactions = async (photoId: string) => {
   };
 
   // =============================
-  // Update photo (caption/description)
+  // ✅ CORRECCIÓN: Update photo - Actualización LOCAL
   // =============================
   const updatePhoto = async (photoId: string, caption: string, place_id?: string) => {
     if (!isAuthenticated || !user) {
@@ -235,26 +172,29 @@ const updatePhotoReactions = async (photoId: string) => {
         title: "🔒 Autenticación requerida",
         description: "Debes iniciar sesión para editar fotos",
         variant: "destructive",
-        position: "bottom-right",
-        duration: 4000,
-        showIcon: true,
       });
       return false;
     }
 
     try {
-      await api.put(`/api/photos/${photoId}`, { caption, place_id });
-      
+      const response = await api.put(`/api/photos/${photoId}`, { caption, place_id });
+
+      if (response.status !== 200) {
+        throw new Error('Error al actualizar la foto');
+      }
+
+      // ✅ CORRECCIÓN: Actualizar LOCALMENTE en lugar de recargar todo
+      setPhotos(prev => prev.map(photo => 
+        photo.id === photoId 
+          ? { ...photo, caption, updated_at: new Date().toISOString() }
+          : photo
+      ));
+
       toast({
         title: "✏️ Foto actualizada",
         description: "La descripción de tu foto se ha actualizado exitosamente",
-        variant: "success",
-        position: "bottom-right",
-        duration: 3000,
-        showIcon: true,
       });
       
-      await fetchPhotos();
       return true;
     } catch (err: unknown) {
       const errorMessage = (err as ErrorResponse)?.response?.data?.message || 'Error al actualizar la foto';
@@ -262,16 +202,13 @@ const updatePhotoReactions = async (photoId: string) => {
         title: "❌ Error al actualizar",
         description: errorMessage,
         variant: "destructive",
-        position: "top-right",
-        duration: 5000,
-        showIcon: true,
       });
       return false;
     }
   };
 
   // =============================
-  // Delete photo
+  // ✅ CORRECCIÓN: Delete photo - Ya está bien, pero la dejamos consistente
   // =============================
   const deletePhoto = async (photoId: string) => {
     if (!isAuthenticated || !user) {
@@ -279,26 +216,25 @@ const updatePhotoReactions = async (photoId: string) => {
         title: "🔒 Autenticación requerida",
         description: "Debes iniciar sesión para eliminar fotos",
         variant: "destructive",
-        position: "bottom-right",
-        duration: 4000,
-        showIcon: true,
       });
       return false;
     }
 
     try {
-      await api.delete(`/api/photos/${photoId}`);
-      
+      const response = await api.delete(`/api/photos/${photoId}`);
+
+      if (response.status !== 200) {
+        throw new Error('Error al eliminar la foto');
+      }
+
+      // ✅ Ya está bien - actualización local
+      setPhotos(prev => prev.filter(photo => photo.id !== photoId));
+
       toast({
         title: "🗑️ Foto eliminada",
         description: "Tu foto se ha borrado exitosamente",
-        variant: "info",
-        position: "bottom-right",
-        duration: 3000,
-        showIcon: true,
       });
       
-      await fetchPhotos();
       return true;
     } catch (err: unknown) {
       const errorMessage = (err as ErrorResponse)?.response?.data?.message || 'Error al eliminar la foto';
@@ -306,16 +242,13 @@ const updatePhotoReactions = async (photoId: string) => {
         title: "❌ Error al eliminar",
         description: errorMessage,
         variant: "destructive",
-        position: "top-right",
-        duration: 5000,
-        showIcon: true,
       });
       return false;
     }
   };
 
   // =============================
-  // React to photo (like/unlike)
+  // ✅ CORRECCIÓN: React to photo - Optimizado
   // =============================
   const reactToPhoto = async (photoId: string) => {
     if (!isAuthenticated || !user) {
@@ -323,51 +256,72 @@ const updatePhotoReactions = async (photoId: string) => {
         title: "🔒 Autenticación requerida",
         description: "Debes iniciar sesión para reaccionar",
         variant: "destructive",
-        position: "bottom-right",
-        duration: 4000,
-        showIcon: true,
       });
       return false;
     }
 
     try {
       setReacting(photoId);
-const response = await api.post(`/api/photos/${photoId}/reactions`, { 
-      reaction_type: 'like' 
-    });
-    
-    // El backend decide si agregar o quitar
-    if (response.data.action === 'added') {
-      toast({
-        title: "❤️ ¡Te gusta!",
-        description: "Has dado like a esta foto",
-        variant: "like",
-        position: "bottom-right",
-        duration: 2000,
-        showIcon: true,
-      });
-    } else {
-      toast({
-        title: "💔 Like removido",
-        description: "Ya no te gusta esta foto",
-        variant: "like",
-        position: "bottom-right",
-        duration: 2000,
-        showIcon: true,
-      });
-    }
+      
+      const response = await api.post<{ action: 'added' | 'removed' }>(
+        `/api/photos/${photoId}/reactions`, 
+        { reaction_type: 'like' }
+      );
 
-    await updatePhotoReactions(photoId);
-    return true;
-  } catch (err: unknown) {
+      const newState = response.data.action === 'added';
+
+      // ✅ CORRECCIÓN: Actualización LOCAL consistente
+      setPhotos(prev => prev.map(photo => {
+        if (photo.id === photoId) {
+          const currentReactions = photo.reactions || [];
+          const userReactionIndex = currentReactions.findIndex(r => r.user_id === user.id);
+          
+          let updatedReactions = [...currentReactions];
+          let updatedCount = photo.reaction_count || 0;
+
+          if (newState && userReactionIndex === -1) {
+            // Agregar reacción
+            updatedReactions.push({
+              id: `temp-${Date.now()}`,
+              user_id: user.id,
+              reaction_type: 'like',
+              created_at: new Date().toISOString()
+            });
+            updatedCount += 1;
+          } else if (!newState && userReactionIndex !== -1) {
+            // Remover reacción
+            updatedReactions.splice(userReactionIndex, 1);
+            updatedCount = Math.max(0, updatedCount - 1);
+          }
+
+          return {
+            ...photo,
+            reactions: updatedReactions,
+            reaction_count: updatedCount
+          };
+        }
+        return photo;
+      }));
+
+      if (newState) {
+        toast({
+          title: "❤️ ¡Te gusta!",
+          description: "Has dado like a esta foto",
+        });
+      } else {
+        toast({
+          title: "💔 Like removido",
+          description: "Ya no te gusta esta foto",
+        });
+      }
+
+      return true;
+    } catch (err: unknown) {
       const errorMessage = (err as ErrorResponse)?.response?.data?.message || 'Error al procesar la reacción';
       toast({
         title: "❌ Error",
         description: errorMessage,
         variant: "destructive",
-        position: "top-right",
-        duration: 4000,
-        showIcon: true,
       });
       return false;
     } finally {
@@ -376,7 +330,7 @@ const response = await api.post(`/api/photos/${photoId}/reactions`, {
   };
 
   // =============================
-  // Helpers
+  // ✅ CORRECCIÓN: Helpers optimizados
   // =============================
   const hasUserReacted = (photo?: Photo): boolean => {
     if (!isAuthenticated || !user || !photo || !photo.reactions) return false;
@@ -385,15 +339,17 @@ const response = await api.post(`/api/photos/${photoId}/reactions`, {
 
   const getReactionCount = (photo?: Photo): number => {
     if (!photo) return 0;
-    return photo.reaction_count !== undefined 
-      ? photo.reaction_count 
-      : (photo.reactions?.length || 0);
+    return photo.reaction_count || (photo.reactions?.length || 0);
   };
 
   const getUserReaction = (photo?: Photo): PhotoReaction | null => {
     if (!isAuthenticated || !user || !photo || !photo.reactions) return null;
     return photo.reactions.find(reaction => reaction.user_id === user.id) || null;
   };
+
+  // =============================
+  // ✅ CORRECCIÓN: Eliminar updatePhotoReactions (ya no es necesario)
+  // =============================
 
   useEffect(() => {
     fetchPhotos();
@@ -412,6 +368,6 @@ const response = await api.post(`/api/photos/${photoId}/reactions`, {
     hasUserReacted,
     getReactionCount,
     getUserReaction,
-    refetch: fetchPhotos,
+    refetch: fetchPhotos, // ✅ Para recargas manuales cuando sea necesario
   };
 };
