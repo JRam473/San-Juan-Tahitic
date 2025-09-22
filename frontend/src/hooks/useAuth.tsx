@@ -99,37 +99,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // ✅ CORRECCIÓN: Función signIn con estructura consistente
   const signIn = async (email: string, password: string): Promise<void> => {
-    try {
-      console.log('🔄 Intentando login con:', { email });
-      
-      const response = await api.post<LoginResponse>('/api/auth/login', { 
-        email, 
-        password 
-      });
-      
-      console.log('✅ Respuesta del backend:', response.data);
-      
-      // ✅ CORRECCIÓN: Acceder directamente según LoginResponse
-      const { token, user: userData } = response.data;
-      
-      if (!token || !userData) {
-        throw new Error('Estructura de respuesta inválida del servidor');
-      }
-      
-      localStorage.setItem('token', token);
-      setUser(userData);
-      setIsAuthenticated(true); // ESTABLECER autenticación
-      
-      try {
-        const profileResponse = await api.get<{ profile: Profile }>('/api/profiles/me', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setProfile(profileResponse.data.profile);
-      } catch {
-        console.log('Perfil no encontrado');
-      }
-    } catch (error: unknown) {
-      console.error('❌ Error completo en login:', error);
+  try {
+    console.log('🔄 Intentando login con:', { email });
+    
+    const response = await api.post<LoginResponse>('/api/auth/login', { 
+      email, 
+      password 
+    });
+    
+    console.log('✅ Respuesta completa del backend:', response);
+    
+    // ✅ MEJORAR validación
+    if (!response.data) {
+      throw new Error('No se recibió respuesta del servidor');
+    }
+
+    const { token, user: userData } = response.data;
+    
+    if (!token) {
+      throw new Error('Token no recibido del servidor');
+    }
+    
+    if (!userData) {
+      throw new Error('Datos de usuario no recibidos');
+    }
+    
+    localStorage.setItem('token', token);
+    setUser(userData);
+    setIsAuthenticated(true);
+    
+    // Verificar que el token funciona
+    await loadUserFromToken(token);
+    
+  } catch (error: unknown) {
+    console.error('❌ Error completo en login:', error);
       setIsAuthenticated(false); // ESTABLECER no autenticado
       if (error instanceof Error && 'response' in error) {
         const axiosError = error as { response?: { data?: { message?: string } } };

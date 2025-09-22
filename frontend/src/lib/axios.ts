@@ -11,32 +11,46 @@ const api = axios.create({
 });
 
 // Interceptor para agregar el token automáticamente
+// Agregar logs a los interceptores
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token'); // Obtener el token del almacenamiento local
+    const token = localStorage.getItem('token');
+    console.log('🔐 AXIOS - Token en request:', token ? 'Presente' : 'Ausente');
+    
     if (token) {
-      // Asegurar que headers exista
-      if (!config.headers) {
-        config.headers = {};
-      }
-      config.headers.Authorization = `Bearer ${token}`; // Agregar el token al encabezado de autorización
+      config.headers = config.headers || {}; // aseguramos que exista
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log('✅ AXIOS - Header Authorization agregado');
     }
-    return config; // Retornar la configuración modificada
+    return config;
   },
   (error) => {
-    return Promise.reject(error); // Rechazar la promesa en caso de error
+    console.error('❌ AXIOS - Error en request interceptor:', error);
+    return Promise.reject(error);
   }
 );
 
-// Interceptor para manejar errores de autenticación
 api.interceptors.response.use(
-  (response) => response, // Retornar la respuesta si es exitosa
+  (response) => {
+    console.log('✅ AXIOS - Respuesta exitosa:', {
+      url: response.config.url,
+      status: response.status
+    });
+    return response;
+  },
   (error) => {
-    if (error.response?.status === 401) { // Si el estado es 401 (no autorizado)
-      localStorage.removeItem('token'); // Eliminar el token del almacenamiento local
-      window.location.href = '/login'; // Redirigir al usuario a la página de inicio de sesión
+    console.error('❌ AXIOS - Error en respuesta:', {
+      url: error.config?.url,
+      status: error.response?.status,
+      message: error.message
+    });
+    
+    if (error.response?.status === 401) {
+      console.log('🚨 AXIOS - Token inválido, redirigiendo a login');
+      localStorage.removeItem('token');
+      window.location.href = '/login';
     }
-    return Promise.reject(error); // Rechazar la promesa en caso de error
+    return Promise.reject(error);
   }
 );
 

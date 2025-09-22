@@ -15,94 +15,98 @@ export const register = async (req: Request, res: Response) => {
 
     // Validaciones básicas
     if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Email y contraseña son requeridos' });
+      return res.status(400).json({ message: 'Email y contraseña son requeridos' });
     }
 
     // Validar formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return res.status(400).json({ success: false, message: 'Formato de email inválido' });
+      return res.status(400).json({ message: 'Formato de email inválido' });
     }
 
     // Validar fortaleza de contraseña
     if (password.length < 6) {
-      return res.status(400).json({ success: false, message: 'La contraseña debe tener al menos 6 caracteres' });
+      return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' });
     }
 
-    // Verificar si ya existe
+    // ✅ SOLO VERIFICAR EMAIL (eliminar verificación de username)
     const userExists = await query(
-      'SELECT id, email, username FROM users WHERE email = $1 OR username = $2',
-      [email, username]
+      'SELECT id, email FROM users WHERE email = $1',
+      [email] // Solo verificar por email
     );
 
     if (userExists.rows.length > 0) {
-      const existingUser = userExists.rows[0];
-      if (existingUser.email === email) {
-        return res.status(400).json({ success: false, message: 'El correo electrónico ya está registrado' });
-      }
-      if (existingUser.username === username) {
-        return res.status(400).json({ success: false, message: 'El nombre de usuario ya está en uso' });
-      }
+      console.log('❌ REGISTRO - Email ya existe:', email);
+      return res.status(400).json({ message: 'El correo electrónico ya está registrado' });
     }
+
+    // ✅ Generar username automáticamente si no se proporciona
+    const finalUsername = username || email.split('@')[0]; // Usar parte del email como username
 
     // Hash de la contraseña
     const hashedPassword = await hashPassword(password);
 
-    // Crear usuario (NO retornar password)
+    // Crear usuario
     const result = await query(
       `INSERT INTO users (username, email, password, is_verified) 
        VALUES ($1, $2, $3, $4) 
-       RETURNING id, username, email, is_verified, created_at`,
-      [username, email, hashedPassword, false]
+       RETURNING id, username, email, is_verified, created_at, avatar_url`,
+      [finalUsername, email, hashedPassword, false]
     );
 
     const user = result.rows[0];
+    console.log('✅ REGISTRO - Usuario creado:', { id: user.id, email: user.email });
 
     // Generar token
     const token = generateToken({ userId: user.id, email: user.email });
 
     res.status(201).json({
-      success: true,
       message: 'Usuario registrado exitosamente',
-      data: {
-        token,
-        user // 🔥 este objeto ya no contiene password
-      }
+      user,
+      token
     });
   } catch (error) {
-    console.error('Error en registro:', error);
-    res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    console.error('❌ REGISTRO - Error interno:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 };
 
 // ================== LOGIN ==================
 export const login = async (req: Request, res: Response) => {
   try {
-    // Log con password censurada
-    console.log('Body recibido:', { ...req.body, password: '******' });
-    console.log('Headers:', req.headers);
+    console.log('🔐 LOGIN - Body recibido:', { 
+      email: req.body.email, 
+      passwordLength: req.body.password?.length 
+    });
 
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Email y contraseña son requeridos' });
+      console.log('❌ LOGIN - Faltan credenciales');
+      return res.status(400).json({ message: 'Email y contraseña son requeridos' });
     }
 
-    // Buscar usuario (sin exponer password en respuesta)
+    console.log('🔍 LOGIN - Buscando usuario con email:', email);
+    
     const result = await query(
       'SELECT id, username, email, password, is_verified, avatar_url FROM users WHERE email = $1',
       [email]
     );
 
+    console.log('👥 LOGIN - Usuarios encontrados:', result.rows.length);
+
     if (result.rows.length === 0) {
+      console.log('❌ LOGIN - Usuario no encontrado');
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
 
     const user = result.rows[0];
+    console.log('✅ LOGIN - Usuario encontrado:', { id: user.id, email: user.email });
 
     // Verificar contraseña
     const isValidPassword = await comparePassword(password, user.password);
     if (!isValidPassword) {
+      console.log('❌ LOGIN - Contraseña incorrecta');
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
 
@@ -112,13 +116,15 @@ export const login = async (req: Request, res: Response) => {
     // Retornar sin incluir la contraseña
     const { password: _, ...userWithoutPassword } = user;
 
+    console.log('✅ LOGIN - Login exitoso para usuario:', user.email);
+    
     res.json({
       message: 'Login exitoso',
       user: userWithoutPassword,
       token
     });
   } catch (error) {
-    console.error('Error en login:', error);
+    console.error('💥 LOGIN - Error interno:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 };
@@ -127,6 +133,7 @@ export const login = async (req: Request, res: Response) => {
 export const getProfile = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
+    console.log('👤 PERFIL - Obteniendo perfil para user ID:', userId);
 
     const result = await query(`
       SELECT u.id, u.username, u.email, u.is_verified, u.avatar_url, u.created_at,
@@ -137,12 +144,14 @@ export const getProfile = async (req: Request, res: Response) => {
     `, [userId]);
 
     if (result.rows.length === 0) {
+      console.log('❌ PERFIL - Usuario no encontrado');
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
+    console.log('✅ PERFIL - Perfil obtenido exitosamente');
     res.json({ user: result.rows[0] });
   } catch (error) {
-    console.error('Error obteniendo perfil:', error);
+    console.error('❌ PERFIL - Error obteniendo perfil:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 };
