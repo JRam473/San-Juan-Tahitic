@@ -1,4 +1,4 @@
-// hooks/useComments.ts - VERSIÓN COMPLETAMENTE CORREGIDA
+// hooks/useComments.ts - VERSIÓN OPTIMIZADA
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -45,35 +45,36 @@ export const useComments = (placeId?: string) => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // ✅ CORRECCIÓN: Función de fetch optimizada
+  // ✅ OPTIMIZACIÓN: useCallback con dependencias correctas
   const fetchComments = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      let endpoint = '/api/comments';
-      if (placeId) {
-        endpoint = `/api/comments/place/${placeId}`;
-      }
+      const endpoint = placeId ? `/api/comments/place/${placeId}` : '/api/comments';
 
       const response = await api.get<ApiResponse>(endpoint);
       
-      if (!response.data || !Array.isArray(response.data.comments)) {
+      if (!response.data?.comments || !Array.isArray(response.data.comments)) {
         setComments([]);
         return;
       }
 
-      const commentsData = response.data.comments;
-      
-      // ✅ SIMPLIFICAR: No cargar replies automáticamente para evitar complejidad
-      const commentsWithDefaults = commentsData.map(comment => ({
+      // ✅ MEJORA: Normalización más robusta de comentarios
+      const normalizeComment = (comment: Comment): Comment => ({
         ...comment,
-        reaction_count: comment.reaction_count || 0,
-        user_has_reacted: comment.user_has_reacted || false,
-        replies: comment.replies || []
-      }));
-      
-      setComments(commentsWithDefaults);
+        reaction_count: comment.reaction_count ?? 0,
+        user_has_reacted: comment.user_has_reacted ?? false,
+        replies: Array.isArray(comment.replies) 
+          ? comment.replies.map(normalizeComment) 
+          : [],
+        username: comment.username || 'Usuario',
+        avatar_url: comment.avatar_url || '',
+        place_name: comment.place_name || null
+      });
+
+      const normalizedComments = response.data.comments.map(normalizeComment);
+      setComments(normalizedComments);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error al cargar los comentarios';
       setError(errorMessage);
@@ -87,8 +88,8 @@ export const useComments = (placeId?: string) => {
     }
   }, [placeId, toast]);
 
-  // ✅ CORRECCIÓN: createComment optimizado - NO usar fetchComments()
-  const createComment = async (content: string, parentCommentId?: string) => {
+  // ✅ CORRECCIÓN: Eliminar setTimeout y usar actualización inmediata pero segura
+  const createComment = useCallback(async (content: string, parentCommentId?: string) => {
     if (!user) {
       toast({
         title: "Autenticación requerida",
@@ -98,7 +99,8 @@ export const useComments = (placeId?: string) => {
       return false;
     }
 
-    if (!content.trim()) {
+    const trimmedContent = content.trim();
+    if (!trimmedContent) {
       toast({
         title: "Contenido requerido",
         description: "El comentario no puede estar vacío",
@@ -111,7 +113,7 @@ export const useComments = (placeId?: string) => {
       setSubmitting(true);
 
       const commentData: CreateCommentInput = {
-        content: content.trim(),
+        content: trimmedContent,
         place_id: placeId || undefined,
         parent_comment_id: parentCommentId || undefined
       };
@@ -124,28 +126,49 @@ export const useComments = (placeId?: string) => {
 
       const newComment = response.data.comment;
       
-      // ✅ CORRECCIÓN: Actualizar estado LOCALMENTE en lugar de recargar todo
+      if (!newComment.id) {
+        throw new Error('El comentario creado no tiene un ID válido');
+      }
+
+      // ✅ MEJORA: Actualización inmediata pero con validación
       setComments(prev => {
-        const newCommentWithDefaults = {
+        const newCommentWithDefaults: Comment = {
           ...newComment,
+          id: newComment.id,
           reaction_count: 0,
           user_has_reacted: false,
-          replies: []
+          replies: [],
+          username: newComment.username || 'Usuario',
+          avatar_url: newComment.avatar_url || '',
+          place_name: newComment.place_name || null,
+          created_at: newComment.created_at || new Date().toISOString(),
+          updated_at: newComment.updated_at || new Date().toISOString()
         };
-        
-        // Si es una respuesta, agregarla al comentario padre
+
         if (parentCommentId) {
-          return prev.map(comment => 
-            comment.id === parentCommentId 
-              ? { 
-                  ...comment, 
-                  replies: [...(comment.replies || []), newCommentWithDefaults] 
-                }
-              : comment
-          );
+          // ✅ MEJORA: Búsqueda recursiva para replies anidados
+          const updateCommentsWithReply = (commentsList: Comment[]): Comment[] => 
+            commentsList.map(comment => {
+              if (comment.id === parentCommentId) {
+                return {
+                  ...comment,
+                  replies: [...(comment.replies || []), newCommentWithDefaults]
+                };
+              }
+              
+              if (comment.replies && comment.replies.length > 0) {
+                return {
+                  ...comment,
+                  replies: updateCommentsWithReply(comment.replies)
+                };
+              }
+              
+              return comment;
+            });
+
+          return updateCommentsWithReply(prev);
         }
         
-        // Si es un comentario principal, agregarlo al inicio
         return [newCommentWithDefaults, ...prev];
       });
 
@@ -166,13 +189,14 @@ export const useComments = (placeId?: string) => {
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [user, placeId, toast]);
 
-  // ✅ updateComment optimizado - consistente con createComment
-  const updateComment = async (commentId: string, content: string) => {
+  // ✅ MEJORA: updateComment con useCallback y manejo de replies
+  const updateComment = useCallback(async (commentId: string, content: string) => {
     if (!user) return false;
 
-    if (!content.trim()) {
+    const trimmedContent = content.trim();
+    if (!trimmedContent) {
       toast({
         title: "Contenido requerido",
         description: "El comentario no puede estar vacío",
@@ -181,24 +205,49 @@ export const useComments = (placeId?: string) => {
       return false;
     }
 
+    if (!commentId) {
+      toast({
+        title: "Error",
+        description: "ID de comentario inválido",
+        variant: "destructive",
+      });
+      return false;
+    }
+
     try {
       const response = await api.put(`/api/comments/${commentId}`, { 
-        content: content.trim()
+        content: trimmedContent
       });
 
       if (response.status !== 200) {
         throw new Error('Error al actualizar comentario');
       }
 
-      // ✅ CORRECCIÓN: Actualizar estado LOCALMENTE
-      setComments(prev => prev.map(comment => 
-        comment.id === commentId 
-          ? { ...comment, content: content.trim(), updated_at: new Date().toISOString() }
-          : comment
-      ));
+      // ✅ MEJORA: Actualización recursiva para comentarios en cualquier nivel
+      const updateCommentInTree = (commentsList: Comment[]): Comment[] => 
+        commentsList.map(comment => {
+          if (comment.id === commentId) {
+            return {
+              ...comment,
+              content: trimmedContent,
+              updated_at: new Date().toISOString()
+            };
+          }
+          
+          if (comment.replies && comment.replies.length > 0) {
+            return {
+              ...comment,
+              replies: updateCommentInTree(comment.replies)
+            };
+          }
+          
+          return comment;
+        });
+
+      setComments(prev => updateCommentInTree(prev));
 
       toast({
-        title: "Comentario actualizado correctamente ✨",
+        title: "Comentario actualizado ✨",
         description: "Tu comentario se ha actualizado exitosamente",
       });
 
@@ -212,10 +261,10 @@ export const useComments = (placeId?: string) => {
       });
       return false;
     }
-  };
+  }, [user, toast]);
 
-  // ✅ deleteComment optimizado - ya está bien pero lo dejamos consistente
-  const deleteComment = async (commentId: string) => {
+  // ✅ MEJORA: deleteComment con useCallback y manejo recursivo
+  const deleteComment = useCallback(async (commentId: string) => {
     if (!user) return false;
 
     try {
@@ -225,8 +274,21 @@ export const useComments = (placeId?: string) => {
         throw new Error('Error al eliminar comentario');
       }
       
-      // ✅ Ya está bien - actualización local
-      setComments(prev => prev.filter(comment => comment.id !== commentId));
+      // ✅ MEJORA: Eliminación recursiva
+      const removeCommentFromTree = (commentsList: Comment[]): Comment[] => 
+        commentsList.filter(comment => {
+          if (comment.id === commentId) {
+            return false;
+          }
+          
+          if (comment.replies && comment.replies.length > 0) {
+            comment.replies = removeCommentFromTree(comment.replies);
+          }
+          
+          return true;
+        });
+
+      setComments(prev => removeCommentFromTree(prev));
 
       toast({
         title: "Comentario eliminado 🗑️",
@@ -243,13 +305,13 @@ export const useComments = (placeId?: string) => {
       });
       return false;
     }
-  };
+  }, [user, toast]);
 
-  // ✅ reactToComment - ya está bien
-  const reactToComment = async (commentId: string) => {
+  // ✅ MEJORA: reactToComment con useCallback y manejo recursivo
+  const reactToComment = useCallback(async (commentId: string) => {
     if (!user) {
       toast({
-        title: "🔒 Autenticación requerida",
+        title: "Autenticación requerida",
         description: "Debes iniciar sesión para reaccionar",
         variant: "destructive",
       });
@@ -269,34 +331,40 @@ export const useComments = (placeId?: string) => {
 
       const newState = response.data.action === 'added';
       
-      // ✅ Actualización local consistente
-      setComments(prev => prev.map(comment => {
-        if (comment.id === commentId) {
-          return {
-            ...comment,
-            reaction_count: newState 
-              ? (comment.reaction_count || 0) + 1 
-              : Math.max(0, (comment.reaction_count || 1) - 1),
-            user_has_reacted: newState
-          };
-        }
-        return comment;
-      }));
+      // ✅ MEJORA: Actualización recursiva de reacciones
+      const updateReactionInTree = (commentsList: Comment[]): Comment[] => 
+        commentsList.map(comment => {
+          if (comment.id === commentId) {
+            return {
+              ...comment,
+              reaction_count: newState 
+                ? (comment.reaction_count || 0) + 1 
+                : Math.max(0, (comment.reaction_count || 1) - 1),
+              user_has_reacted: newState
+            };
+          }
+          
+          if (comment.replies && comment.replies.length > 0) {
+            return {
+              ...comment,
+              replies: updateReactionInTree(comment.replies)
+            };
+          }
+          
+          return comment;
+        });
 
-      if (newState) {
-        toast({
-          title: "❤️ Te gusta",
-          description: "Has reaccionado al comentario",
-        });
-      } else {
-        toast({
-          title: "💔 Ya no te gusta",
-          description: "Has quitado tu reacción",
-        });
-      }
+      setComments(prev => updateReactionInTree(prev));
+
+      toast({
+        title: newState ? "❤️ Te gusta" : "💔 Ya no te gusta",
+        description: newState 
+          ? "Has reaccionado al comentario" 
+          : "Has quitado tu reacción",
+      });
 
       return true;
-    } catch (err: unknown) {
+    } catch (err) {
       console.error('Error en reactToComment:', err);
       
       let errorMessage = 'Error al procesar la reacción';
@@ -316,7 +384,7 @@ export const useComments = (placeId?: string) => {
     } finally {
       setReactingComments(prev => ({ ...prev, [commentId]: false }));
     }
-  };
+  }, [user, toast]);
 
   const canEditComment = useCallback((comment: Comment): boolean => {
     return user?.id === comment.user_id;
@@ -337,6 +405,6 @@ export const useComments = (placeId?: string) => {
     deleteComment,
     reactToComment,
     canEditComment,
-    refetch: fetchComments // ✅ Para recargas manuales cuando sea necesario
+    refetch: fetchComments
   };
 };
