@@ -27,7 +27,6 @@ import commentRoutes from './routes/commentRoutes';
 import ratingRoutes from './routes/ratingRoutes';
 import { configureGoogleOAuth, checkGoogleConfig } from './utils/oauth';
 
-
 const app = express();
 const PORT = process.env.PORT || 4000;
 
@@ -40,21 +39,16 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// 🔥 AÑADIR ESTO: Servir archivos estáticos desde la carpeta uploads
-
-
-// Las rutas deben quedar así:
+// Servir archivos estáticos
 app.use('/images', express.static(path.join(__dirname, '../images')));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-
 
 // Configurar Passport y OAuth
 app.use(passport.initialize());
 configureGoogleOAuth();
-
 checkGoogleConfig();
 
-// Rutas
+// Rutas API
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/profiles', profileRoutes);
@@ -63,7 +57,24 @@ app.use('/api/photos', photoRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/ratings', ratingRoutes);
 
-// Manejo de errores
+// ✅ CORREGIDO: Manejo de rutas no encontradas (usa '/*' en lugar de '*')
+app.use('/', (req, res) => {
+  res.status(404).json({
+    error: 'Endpoint no encontrado',
+    message: `La ruta ${req.originalUrl} no existe`,
+    availableEndpoints: [
+      '/api/auth/*',
+      '/api/users/*',
+      '/api/profiles/*',
+      '/api/places/*',
+      '/api/photos/*',
+      '/api/comments/*',
+      '/api/ratings/*'
+    ]
+  });
+});
+
+// Manejo de errores (debe ser el último middleware)
 app.use(errorHandler);
 
 // Iniciar servidor

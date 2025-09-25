@@ -1,4 +1,4 @@
-//AuthButton.tsx
+// components/AuthButton.tsx
 import { useAuth } from './hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -10,10 +10,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Link, useNavigate } from 'react-router-dom'; // 👈 Agregar useNavigate
+import { Link, useNavigate } from 'react-router-dom';
+import { Settings, LogOut, User, Shield, MapPin } from 'lucide-react'; // 👈 Agregar MapPin
+import { Badge } from '@/components/ui/badge'; // 👈 Asegurar que Badge esté importado
+
 
 export const AuthButton = () => {
-  const { user, profile, signOut, signInWithGoogle, loading } = useAuth();
+  const { user, profile, signOut, signInWithGoogle, loading, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   if (loading) {
@@ -45,32 +48,64 @@ export const AuthButton = () => {
               </AvatarFallback>
             </Avatar>
             <span className="font-medium hidden md:block">{displayName}</span>
+            {isAdmin && (
+              <Shield className="h-3 w-3 text-yellow-400" />
+            )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-  align="end"
-  className="w-56 bg-white/30 backdrop-blur-sm border border-white/20 p-2 text-gray-900 dark:text-gray-100 dark:bg-black/30 dark:border-gray-700 shadow-lg rounded-md"
->
-  <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
-  <DropdownMenuSeparator />
-  <DropdownMenuItem asChild>
-    <Link to="/profile">Perfil</Link>
-  </DropdownMenuItem>
-  <DropdownMenuItem asChild>
-    <Link to="/settings">Configuración</Link>
-  </DropdownMenuItem>
-  <DropdownMenuSeparator />
-  <DropdownMenuItem 
-    onClick={() => {
-      signOut();
-      navigate('/');
-    }}
-    className="text-red-600 focus:text-red-600"
-  >
-    Cerrar Sesión
-  </DropdownMenuItem>
-</DropdownMenuContent>
+          align="end"
+          className="w-56 bg-white/30 backdrop-blur-sm border border-white/20 p-2 text-gray-900 dark:text-gray-100 dark:bg-black/30 dark:border-gray-700 shadow-lg rounded-md"
+        >
+          <DropdownMenuLabel className="flex items-center gap-2">
+            Mi Cuenta
+            {isAdmin && (
+              <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800">
+                Admin
+              </Badge>
+            )}
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          
+          <DropdownMenuItem asChild>
+            <Link to="/profile" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Perfil
+            </Link>
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem asChild>
+            <Link to="/settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Configuración
+            </Link>
+          </DropdownMenuItem>
 
+          {/* 👇 ITEM DE ADMINISTRACIÓN - Solo visible para admin */}
+          {isAdmin && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/admin/Places" className="flex items-center gap-2 text-blue-600 font-medium">
+                  <MapPin className="h-4 w-4" /> {/* 👈 Cambié Shield por MapPin */}
+                  Panel de Lugares
+                </Link>
+              </DropdownMenuItem>
+            </>
+          )}
+          
+          <DropdownMenuSeparator />
+          <DropdownMenuItem 
+            onClick={() => {
+              signOut();
+              navigate('/');
+            }}
+            className="flex items-center gap-2 text-red-600 focus:text-red-600"
+          >
+            <LogOut className="h-4 w-4" />
+            Cerrar Sesión
+          </DropdownMenuItem>
+        </DropdownMenuContent>
       </DropdownMenu>
     );
   }

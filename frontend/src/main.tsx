@@ -31,7 +31,10 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { ProfilePage } from './pages/ProfilePage';
 
 // Importar ToastProvider
-import { ToastProvider } from '@/components/ui/toast'; // 👈 Importar ToastProvider
+import { ToastProvider } from '@/components/ui/toast';
+
+// 👇 Importar el Panel de Administración
+import { PanelPlaceSection } from './pages/PanelPlaceSection';
 
 const router = createBrowserRouter([
   {
@@ -49,6 +52,15 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <ProfilePage />
+          </ProtectedRoute>
+        )
+      },
+      // 👇 Agregar la ruta del panel de administración
+      {
+        path: 'admin/places',
+        element: (
+          <ProtectedRoute requireAdmin={true}> {/* 👈 Nueva prop para requerir admin */}
+            <PanelPlaceSection />
           </ProtectedRoute>
         )
       }
@@ -70,7 +82,7 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ToastProvider> {/* 👈 Envolver con ToastProvider */}
+    <ToastProvider>
       <AuthProvider>
         <RouterProvider router={router} />
       </AuthProvider>

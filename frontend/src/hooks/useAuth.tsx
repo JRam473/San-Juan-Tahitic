@@ -40,7 +40,8 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  isAuthenticated: boolean; // AÑADIR esta propiedad
+  isAuthenticated: boolean;
+  isAdmin: boolean; // 👈 Agregar esta propiedad
   signOut: () => void;
   signInWithGoogle: () => void;
   signIn: (email: string, password: string) => Promise<void>;
@@ -53,7 +54,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false); // AÑADIR este estado
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // ✅ Función para verificar si el usuario es administrador
+  const checkIsAdmin = useCallback((userEmail: string | undefined): boolean => {
+    if (!userEmail) return false;
+    const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
+    return userEmail === adminEmail;
+  }, []);
+
+  const [isAdmin, setIsAdmin] = useState(false); // 👈 Estado para isAdmin
 
   // ✅ CORREGIDO: Función para cargar usuario desde token
   const loadUserFromToken = useCallback(async (token: string): Promise<void> => {
@@ -64,7 +74,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // ✅ CORRECCIÓN: Acceder directamente según la interfaz ProfileResponse
       setUser(userResponse.data.user);
-      setIsAuthenticated(true); // ESTABLECER autenticación
+      setIsAuthenticated(true);
+      
+      // ✅ Verificar si es administrador
+      setIsAdmin(checkIsAdmin(userResponse.data.user.email));
       
       try {
         const profileResponse = await api.get<{ profile: Profile }>('/api/profiles/me', {
@@ -77,9 +90,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error('Error cargando usuario:', error);
       localStorage.removeItem('token');
-      setIsAuthenticated(false); // ESTABLECER no autenticado
+      setIsAuthenticated(false);
+      setIsAdmin(false); // 👈 Resetear isAdmin en caso de error
     }
-  }, []);
+  }, [checkIsAdmin]);
 
   // ✅ CORRECCIÓN: Función para verificar autenticación
   const checkAuth = useCallback(async (): Promise<void> => {
@@ -87,7 +101,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (token) {
       await loadUserFromToken(token);
     } else {
-      setIsAuthenticated(false); // ESTABLECER no autenticado si no hay token
+      setIsAuthenticated(false);
+      setIsAdmin(false); // 👈 Resetear isAdmin si no hay token
     }
     setLoading(false);
   }, [loadUserFromToken]);
@@ -99,41 +114,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // ✅ CORRECCIÓN: Función signIn con estructura consistente
   const signIn = async (email: string, password: string): Promise<void> => {
-  try {
-    console.log('🔄 Intentando login con:', { email });
-    
-    const response = await api.post<LoginResponse>('/api/auth/login', { 
-      email, 
-      password 
-    });
-    
-    console.log('✅ Respuesta completa del backend:', response);
-    
-    // ✅ MEJORAR validación
-    if (!response.data) {
-      throw new Error('No se recibió respuesta del servidor');
-    }
+    try {
+      console.log('🔄 Intentando login con:', { email });
+      
+      const response = await api.post<LoginResponse>('/api/auth/login', { 
+        email, 
+        password 
+      });
+      
+      console.log('✅ Respuesta completa del backend:', response);
+      
+      // ✅ MEJORAR validación
+      if (!response.data) {
+        throw new Error('No se recibió respuesta del servidor');
+      }
 
-    const { token, user: userData } = response.data;
-    
-    if (!token) {
-      throw new Error('Token no recibido del servidor');
-    }
-    
-    if (!userData) {
-      throw new Error('Datos de usuario no recibidos');
-    }
-    
-    localStorage.setItem('token', token);
-    setUser(userData);
-    setIsAuthenticated(true);
-    
-    // Verificar que el token funciona
-    await loadUserFromToken(token);
-    
-  } catch (error: unknown) {
-    console.error('❌ Error completo en login:', error);
-      setIsAuthenticated(false); // ESTABLECER no autenticado
+      const { token, user: userData } = response.data;
+      
+      if (!token) {
+        throw new Error('Token no recibido del servidor');
+      }
+      
+      if (!userData) {
+        throw new Error('Datos de usuario no recibidos');
+      }
+      
+      localStorage.setItem('token', token);
+      setUser(userData);
+      setIsAuthenticated(true);
+      setIsAdmin(checkIsAdmin(userData.email)); // 👈 Verificar si es admin
+      
+      // Verificar que el token funciona
+      await loadUserFromToken(token);
+      
+    } catch (error: unknown) {
+      console.error('❌ Error completo en login:', error);
+      setIsAuthenticated(false);
+      setIsAdmin(false); // 👈 Resetear isAdmin en error
+      
       if (error instanceof Error && 'response' in error) {
         const axiosError = error as { response?: { data?: { message?: string } } };
         throw new Error(axiosError.response?.data?.message || 'Error al iniciar sesión');
@@ -160,11 +178,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       localStorage.setItem('token', token);
       setUser(userData);
-      setIsAuthenticated(true); // ESTABLECER autenticación
+      setIsAuthenticated(true);
+      setIsAdmin(checkIsAdmin(userData.email)); // 👈 Verificar si es admin
       
     } catch (error: unknown) {
       console.error('❌ Error completo en registro:', error);
-      setIsAuthenticated(false); // ESTABLECER no autenticado
+      setIsAuthenticated(false);
+      setIsAdmin(false); // 👈 Resetear isAdmin en error
       
       if (error instanceof Error && 'response' in error) {
         const axiosError = error as { 
@@ -191,7 +211,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('token');
     setUser(null);
     setProfile(null);
-    setIsAuthenticated(false); // ESTABLECER no autenticado
+    setIsAuthenticated(false);
+    setIsAdmin(false); // 👈 Resetear isAdmin al cerrar sesión
   };
 
   const signInWithGoogle = (): void => {
@@ -205,7 +226,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       user, 
       profile, 
       loading, 
-      isAuthenticated, // AÑADIR al contexto
+      isAuthenticated,
+      isAdmin, // 👈 Incluir isAdmin en el contexto
       signOut, 
       signInWithGoogle,
       signIn,
