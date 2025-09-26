@@ -1,5 +1,5 @@
 // components/admin/AdminPlaces.tsx - VERSIÓN CORREGIDA
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -56,14 +56,16 @@ import {
   RefreshCw,
   Star,
   Filter,
-  BarChart3
+  BarChart3,
+  Upload,
+  X
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapLocationSelector } from '@/components/admin/MapLocationSelector'; // ✅ Importación agregada
+import { MapLocationSelector } from '@/components/admin/MapLocationSelector';
 
 // Función para construir la URL completa de la imagen
 const buildImageUrl = (imagePath: string | null | undefined): string => {
@@ -75,6 +77,7 @@ const buildImageUrl = (imagePath: string | null | undefined): string => {
   
   const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
   const normalizedPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+  
   
   return `${backendUrl}${normalizedPath}`;
 };
@@ -129,17 +132,28 @@ const PlaceCard = ({
 
   const getCategoryColor = (category: string | null) => {
     if (!category) return 'bg-gray-500';
-    
+
     const categoryLower = category.toLowerCase();
+
     if (categoryLower.includes('naturaleza') || categoryLower.includes('nature')) 
-      return 'bg-green-500';
+      return 'bg-green-600';
     if (categoryLower.includes('cultura') || categoryLower.includes('culture')) 
-      return 'bg-amber-500';  
-    if (categoryLower.includes('playa') || categoryLower.includes('beach')) 
-      return 'bg-blue-500';
+      return 'bg-yellow-500';
+    if (categoryLower.includes('cascada') || categoryLower.includes('waterfall')) 
+      return 'bg-sky-500';
     if (categoryLower.includes('historia') || categoryLower.includes('history')) 
-      return 'bg-purple-500';
-    return 'bg-gray-500';
+      return 'bg-purple-600';
+    if (categoryLower.includes('puente') || categoryLower.includes('bridge')) 
+      return 'bg-red-600';
+    if (categoryLower.includes('mirador') || categoryLower.includes('viewpoint')) 
+      return 'bg-rose-500';
+    if (categoryLower.includes('ruta') || categoryLower.includes('trail') || categoryLower.includes('path')) 
+      return 'bg-emerald-500';
+    if (categoryLower.includes('montaña') || categoryLower.includes('mountain')) 
+      return 'bg-indigo-700';
+    if (categoryLower.includes('rio') || categoryLower.includes('río') || categoryLower.includes('river')) 
+      return 'bg-cyan-600';
+    return 'bg-gray-400';
   };
 
   return (
@@ -150,7 +164,6 @@ const PlaceCard = ({
       className="group"
     >
       <Card className="overflow-hidden shadow-card hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-white to-gray-50/50">
-        {/* Imagen con overlay */}
         <div className="relative h-48 overflow-hidden">
           {place.image_url ? (
             <>
@@ -174,7 +187,6 @@ const PlaceCard = ({
             </div>
           )}
           
-          {/* Overlay y badges */}
           <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
           <div className="absolute top-3 left-3">
             <Badge className={cn(getCategoryColor(place.category), "text-white border-0 shadow-md")}>
@@ -189,10 +201,8 @@ const PlaceCard = ({
           </div>
         </div>
 
-        {/* Contenido */}
         <CardContent className="p-4">
           <div className="space-y-3">
-            {/* Header con título y acciones */}
             <div className="flex items-start justify-between">
               <h3 className="font-semibold text-lg leading-tight line-clamp-2 text-gray-900">
                 {place.name}
@@ -203,7 +213,7 @@ const PlaceCard = ({
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-white/30 backdrop-blur-sm border border-white/20 p-2 text-gray-900 dark:text-gray-100 dark:bg-black/30 dark:border-gray-700 shadow-lg rounded-md" align="end">
+                <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => onEdit(place)}>
                     <Edit className="h-4 w-4 mr-2" />
                     Editar
@@ -219,18 +229,15 @@ const PlaceCard = ({
               </DropdownMenu>
             </div>
 
-            {/* Ubicación */}
             <div className="flex items-center text-sm text-muted-foreground">
               <MapPin className="h-3 w-3 mr-1" />
               <span className="line-clamp-1">{place.location || 'Ubicación no especificada'}</span>
             </div>
 
-            {/* Descripción */}
             <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
               {place.description || 'Sin descripción disponible'}
             </p>
 
-            {/* Stats y recursos */}
             <div className="flex items-center justify-between pt-2">
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1">
@@ -266,9 +273,17 @@ interface PlaceFormData {
   category?: string;
 }
 
+interface FileState {
+  image: File | null;
+  pdf: File | null;
+}
+
 const CATEGORIES = [
   'Naturaleza',
   'Cultura',
+  'Cascada',
+  'Mirador',
+  'Puente',
   'Playa',
   'Historia',
   'Gastronomía',
@@ -298,14 +313,19 @@ export const AdminPlaces = () => {
   const [formData, setFormData] = useState<PlaceFormData>({
     name: '',
     description: '',
-    category: '',
+    category: undefined,
     location: '',
     image_url: '',
     pdf_url: ''
   });
+  const [files, setFiles] = useState<FileState>({
+    image: null,
+    pdf: null
+  });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedCoordinates, setSelectedCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     refetch();
@@ -328,9 +348,12 @@ export const AdminPlaces = () => {
       image_url: '',
       pdf_url: ''
     });
+    setFiles({
+      image: null,
+      pdf: null
+    });
     setFormErrors({});
     setEditingPlace(null);
-    setSelectedCoordinates(null);
   };
 
   const handleLocationSelect = (location: { address: string; lat: number; lng: number }) => {
@@ -338,7 +361,6 @@ export const AdminPlaces = () => {
       ...prev,
       location: location.address
     }));
-    setSelectedCoordinates({ lat: location.lat, lng: location.lng });
   };
 
   const validateForm = (): boolean => {
@@ -360,30 +382,13 @@ export const AdminPlaces = () => {
       errors.location = 'La ubicación es requerida';
     }
 
-    if (formData.image_url && !isValidUrl(formData.image_url)) {
-      if (!formData.image_url.startsWith('/') && !formData.image_url.startsWith('http')) {
-        errors.image_url = 'La URL debe ser completa o empezar con /';
-      }
-    }
-
-    if (formData.pdf_url && !isValidUrl(formData.pdf_url)) {
-      if (!formData.pdf_url.startsWith('/') && !formData.pdf_url.startsWith('http')) {
-        errors.pdf_url = 'La URL debe ser completa o empezar con /';
-      }
+    // Para crear nuevo lugar, la imagen es requerida
+    if (!editingPlace && !files.image) {
+      errors.image = 'La imagen es requerida para crear un nuevo lugar';
     }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
-  };
-
-  const isValidUrl = (string: string) => {
-    try {
-      if (string.startsWith('/')) return true;
-      new URL(string);
-      return true;
-    } catch (_) {
-      return false;
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -393,10 +398,34 @@ export const AdminPlaces = () => {
 
     setIsSubmitting(true);
     try {
+      // Preparar datos del lugar
+      const placeData: PlaceFormData = {
+        name: formData.name,
+        description: formData.description,
+        category: formData.category,
+        location: formData.location,
+      };
+
+      // Para una implementación real, aquí subirías los archivos
+      // Por ahora, usamos nombres temporales para la demo
+      if (files.image) {
+        placeData.image_url = `/uploads/${files.image.name}`;
+      } else if (editingPlace?.image_url) {
+        placeData.image_url = editingPlace.image_url;
+      }
+
+      if (files.pdf) {
+        placeData.pdf_url = `/uploads/${files.pdf.name}`;
+      } else if (editingPlace?.pdf_url) {
+        placeData.pdf_url = editingPlace.pdf_url;
+      }
+
+      console.log('📤 Enviando datos del lugar:', placeData);
+
       if (editingPlace) {
-        await updatePlace(editingPlace.id, formData);
+        await updatePlace(editingPlace.id, placeData);
       } else {
-        await createPlace(formData);
+        await createPlace(placeData);
       }
 
       setIsDialogOpen(false);
@@ -418,6 +447,10 @@ export const AdminPlaces = () => {
       location: place.location || '',
       image_url: place.image_url || '',
       pdf_url: place.pdf_url || ''
+    });
+    setFiles({
+      image: null,
+      pdf: null
     });
     setIsDialogOpen(true);
   };
@@ -452,11 +485,32 @@ export const AdminPlaces = () => {
     await refetch();
   };
 
-  // Esqueletos de carga mejorados
+  const handleFileChange = (type: 'image' | 'pdf', file: File | null) => {
+    setFiles(prev => ({
+      ...prev,
+      [type]: file
+    }));
+    
+    // Limpiar error del archivo cuando se selecciona uno
+    if (file) {
+      setFormErrors(prev => ({
+        ...prev,
+        [type]: ''
+      }));
+    }
+  };
+
+  const removeFile = (type: 'image' | 'pdf') => {
+    setFiles(prev => ({
+      ...prev,
+      [type]: null
+    }));
+  };
+
+  // Esqueletos de carga
   if (loading && places.length === 0) {
     return (
       <div className="space-y-6">
-        {/* Header skeleton */}
         <div className="flex justify-between items-center">
           <div className="space-y-2">
             <Skeleton className="h-8 w-64" />
@@ -465,14 +519,12 @@ export const AdminPlaces = () => {
           <Skeleton className="h-10 w-32" />
         </div>
         
-        {/* Filtros skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
         </div>
 
-        {/* Grid skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
             <Card key={i} className="overflow-hidden">
@@ -495,7 +547,7 @@ export const AdminPlaces = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header Mejorado */}
+      {/* Header */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -539,26 +591,22 @@ export const AdminPlaces = () => {
                 Nuevo Lugar
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
-              <DialogHeader className="space-y-2">
-                <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <DialogContent className="max-w-2xl bg-slate-900/95 backdrop-blur-sm border border-slate-700 shadow-xl text-white">
+              <DialogHeader className="pb-0">
+                <DialogTitle>
                   {editingPlace ? 'Editar Lugar' : 'Crear Nuevo Lugar'}
                 </DialogTitle>
-                <p className="text-muted-foreground">
-                  {editingPlace ? 'Modifica la información del lugar' : 'Agrega un nuevo lugar turístico a San Juan Tahitic'}
-                </p>
               </DialogHeader>
               
-              <form onSubmit={handleSubmit} className="space-y-6 py-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <form onSubmit={handleSubmit} className="space-y-4 py-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name" className="text-sm font-medium">Nombre del lugar *</Label>
+                    <Label htmlFor="name">Nombre del lugar *</Label>
                     <Input
                       id="name"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       placeholder="Ej: Mirador de la Sierra"
-                      className="border-blue-200 focus:border-blue-500"
                     />
                     {formErrors.name && (
                       <p className="text-sm text-red-600">{formErrors.name}</p>
@@ -566,21 +614,21 @@ export const AdminPlaces = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="category" className="text-sm font-medium">Categoría *</Label>
+                    <Label htmlFor="category">Categoría *</Label>
                     <Select
                       value={formData.category}
                       onValueChange={(value) => setFormData({ ...formData, category: value })}
                     >
-                      <SelectTrigger className="border-blue-200 focus:border-blue-500">
+                      <SelectTrigger>
                         <SelectValue placeholder="Selecciona una categoría" />
                       </SelectTrigger>
-                      <SelectContent className='max-h-60 overflow-y-auto bg-white/30 backdrop-blur-sm border border-white/20 p-2 text-gray-900 dark:text-gray-100 dark:bg-black/30 dark:border-gray-700 shadow-lg rounded-md'>
+                       <SelectContent className='max-h-60 overflow-y-auto bg-white/30 backdrop-blur-sm border border-white/20 p-2 text-gray-900 dark:text-gray-100 dark:bg-black/30 dark:border-gray-700 shadow-lg rounded-md'>
                         {CATEGORIES.map(category => (
                           <SelectItem key={category} value={category}>
                             {category}
                           </SelectItem>
                         ))}
-                      </SelectContent>
+                        </SelectContent>
                     </Select>
                     {formErrors.category && (
                       <p className="text-sm text-red-600">{formErrors.category}</p>
@@ -588,19 +636,16 @@ export const AdminPlaces = () => {
                   </div>
                 </div>
 
-                {/* SECCIÓN DE UBICACIÓN CORREGIDA */}
                 <div className="space-y-2">
-                  <Label htmlFor="location" className="text-sm font-medium">Ubicación *</Label>
-                  
+                  <Label htmlFor="location">Ubicación *</Label>
                   <div className="flex gap-2">
                     <Input
                       id="location"
                       value={formData.location}
                       onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                       placeholder="Ej: Centro de San Juan Tahitic"
-                      className="border-blue-200 focus:border-blue-500 flex-1"
+                      className="flex-1"
                     />
-                    
                     <MapLocationSelector
                       onLocationSelect={handleLocationSelect}
                       currentLocation={formData.location}
@@ -608,93 +653,199 @@ export const AdminPlaces = () => {
                       className="w-auto px-4"
                     />
                   </div>
-                  
-                  {selectedCoordinates && (
-                    <p className="text-xs text-muted-foreground">
-                      Coordenadas: {selectedCoordinates.lat.toFixed(6)}, {selectedCoordinates.lng.toFixed(6)}
-                    </p>
-                  )}
-                  
                   {formErrors.location && (
                     <p className="text-sm text-red-600">{formErrors.location}</p>
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/*SECCIÓN DE ARCHIVOS CORREGIDA - Reemplaza esta parte en tu código */}
+                                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Input de Imagen CON useRef */}
                   <div className="space-y-2">
-                    <Label htmlFor="image_file">Imagen *</Label>
-                    <Input
-                      id="image_file"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0] || null;
-                        setFormData({ ...formData, image_url: file ? file.name : '' });
-                      }}
-                    />
-                    {formData.image_url && (
-                      <p className="text-xs text-muted-foreground">
-                        Archivo seleccionado: {formData.image_url}
-                      </p>
-                    )}
-                    {formErrors.image_url && (
-                      <p className="text-sm text-destructive">{formErrors.image_url}</p>
-                    )}
+                    <Label htmlFor="image_file">
+                      Imagen {!editingPlace && '*'}
+                    </Label>
+                    <div className="space-y-2">
+                      {files.image ? (
+                        <div className="flex items-center justify-between p-2 border rounded-md bg-muted/50">
+                          <div className="flex items-center gap-2">
+                            <img 
+                              src={URL.createObjectURL(files.image)} 
+                              alt="Vista previa" 
+                              className="w-10 h-10 object-cover rounded"
+                            />
+                            <span className="text-sm truncate">{files.image.name}</span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFile('image')}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : editingPlace?.image_url ? (
+                        <div className="flex items-center justify-between p-2 border rounded-md bg-muted/50">
+                          <div className="flex items-center gap-2">
+                            <img 
+                              src={buildImageUrl(editingPlace.image_url)} 
+                              alt="Imagen actual" 
+                              className="w-10 h-10 object-cover rounded"
+                            />
+                            <span className="text-sm text-muted-foreground">Imagen actual</span>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => imageInputRef.current?.click()}
+                            >
+                              Cambiar
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeFile('image')}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div 
+                          className="border-2 border-dashed rounded-md p-4 text-center cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => imageInputRef.current?.click()}
+                        >
+                          <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Haz clic para seleccionar una imagen
+                          </p>
+                          <Button type="button" variant="outline" size="sm">
+                            Seleccionar Imagen
+                          </Button>
+                        </div>
+                      )}
+                      
+                      <Input
+                        ref={imageInputRef}
+                        id="image_file"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleFileChange('image', e.target.files?.[0] || null)}
+                        className="hidden"
+                      />
+                      
+                      {formErrors.image && (
+                        <p className="text-sm text-red-600">{formErrors.image}</p>
+                      )}
+                    </div>
                   </div>
 
+                  {/* Input de PDF CON useRef */}
                   <div className="space-y-2">
                     <Label htmlFor="pdf_file">Documento PDF</Label>
-                    <Input
-                      id="pdf_file"
-                      type="file"
-                      accept="application/pdf"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0] || null;
-                        setFormData({ ...formData, pdf_url: file ? file.name : '' });
-                      }}
-                    />
-                    {formData.pdf_url && (
-                      <p className="text-xs text-muted-foreground">
-                        Archivo seleccionado: {formData.pdf_url}
-                      </p>
-                    )}
-                    {formErrors.pdf_url && (
-                      <p className="text-sm text-destructive">{formErrors.pdf_url}</p>
-                    )}
+                    <div className="space-y-2">
+                      {files.pdf ? (
+                        <div className="flex items-center justify-between p-2 border rounded-md bg-muted/50">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-10 w-10 text-blue-500" />
+                            <span className="text-sm truncate">{files.pdf.name}</span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFile('pdf')}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : editingPlace?.pdf_url ? (
+                        <div className="flex items-center justify-between p-2 border rounded-md bg-muted/50">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-10 w-10 text-green-500" />
+                            <span className="text-sm text-muted-foreground">PDF actual</span>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => pdfInputRef.current?.click()}
+                            >
+                              Cambiar
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeFile('pdf')}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div 
+                          className="border-2 border-dashed rounded-md p-4 text-center cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => pdfInputRef.current?.click()}
+                        >
+                          <FileText className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Haz clic para seleccionar un PDF
+                          </p>
+                          <Button type="button" variant="outline" size="sm">
+                            Seleccionar PDF
+                          </Button>
+                        </div>
+                      )}
+                      
+                      <Input
+                        ref={pdfInputRef}
+                        id="pdf_file"
+                        type="file"
+                        accept="application/pdf"
+                        onChange={(e) => handleFileChange('pdf', e.target.files?.[0] || null)}
+                        className="hidden"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description" className="text-sm font-medium">Descripción *</Label>
+                  <Label htmlFor="description">Descripción *</Label>
                   <Textarea
                     id="description"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Describe el lugar, sus características y atractivos..."
                     rows={4}
-                    className="border-blue-200 focus:border-blue-500 resize-none"
                   />
                   {formErrors.description && (
                     <p className="text-sm text-red-600">{formErrors.description}</p>
                   )}
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t border-blue-100">
+                <div className="flex justify-end gap-3 pt-4">
                   <Button
+                    className='border border-red/20 bg-red-800 text-white/80 hover:bg-white/10'
                     type="button"
                     variant="outline"
                     onClick={() => handleDialogOpenChange(false)}
                     disabled={isSubmitting}
-                    className="border-blue-200 text-blue-700 hover:bg-blue-50"
                   >
                     Cancelar
                   </Button>
                   <Button 
+                    className='bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg'
                     type="submit" 
                     disabled={isSubmitting}
-                    className="gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
                   >
-                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                     {editingPlace ? 'Actualizar Lugar' : 'Crear Lugar'}
                   </Button>
                 </div>
@@ -727,7 +878,12 @@ export const AdminPlaces = () => {
                   <SelectValue placeholder="Todas las categorías" />
                 </div>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent 
+                position="popper"
+                sideOffset={5}
+                avoidCollisions={false}
+                className="z-[100] max-h-60 overflow-y-auto bg-white/30 backdrop-blur-sm border border-white/20 p-2 text-gray-900 dark:text-gray-100 dark:bg-black/30 dark:border-gray-700 shadow-lg rounded-md"
+              >
                 <SelectItem value="all">Todas las categorías</SelectItem>
                 {CATEGORIES.map(category => (
                   <SelectItem key={category} value={category}>

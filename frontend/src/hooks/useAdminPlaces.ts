@@ -1,4 +1,4 @@
-// hooks/useAdminPlaces.ts
+// hooks/useAdminPlaces.ts - VERSIÓN CORREGIDA
 import { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import api from '@/lib/axios';
@@ -32,26 +32,26 @@ export const useAdminPlaces = () => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-const buildImageUrl = (imagePath: string | null | undefined): string => {
-  if (!imagePath) return '';
-  
-  if (imagePath.startsWith('http')) {
-    return imagePath;
-  }
-  
-  const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-  const normalizedPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
-  
-  return `${backendUrl}${normalizedPath}`;
-};
+  const buildImageUrl = (imagePath: string | null | undefined): string => {
+    if (!imagePath) return '';
+    
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    
+    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+    const normalizedPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+    
+    return `${backendUrl}${normalizedPath}`;
+  };
 
-const parsePlaceData = (place: any): Place => ({
-  ...place,
-  image_url: place.image_url ? buildImageUrl(place.image_url) : null,
-  pdf_url: place.pdf_url ? buildImageUrl(place.pdf_url) : null,
-  average_rating: place.average_rating ? Number(place.average_rating) : 0,
-  total_ratings: place.total_ratings ? Number(place.total_ratings) : 0
-});
+  const parsePlaceData = (place: any): Place => ({
+    ...place,
+    image_url: place.image_url ? buildImageUrl(place.image_url) : null,
+    pdf_url: place.pdf_url ? buildImageUrl(place.pdf_url) : null,
+    average_rating: place.average_rating ? Number(place.average_rating) : 0,
+    total_ratings: place.total_ratings ? Number(place.total_ratings) : 0
+  });
 
   /**
    * Obtener todos los lugares
@@ -62,10 +62,15 @@ const parsePlaceData = (place: any): Place => ({
       setError(null);
 
       const response = await api.get<{ places: Place[] }>('/api/places');
-      const parsedPlaces = response.data.places?.map(parsePlaceData) || [];
-setPlaces(parsedPlaces);
-      console.log('📦 Lugares obtenidos:', response.data.places);
-      setPlaces(response.data.places || []);
+      console.log('📦 Respuesta completa del servidor:', response.data);
+      
+      const placesData = response.data.places || [];
+      console.log('📦 Lugares obtenidos:', placesData);
+      
+      const parsedPlaces = placesData.map(parsePlaceData);
+      setPlaces(parsedPlaces);
+      
+      return parsedPlaces;
     } catch (err: any) {
       const errorMessage = err?.response?.data?.message || err?.message || 'Error al cargar los lugares';
       setError(errorMessage);
@@ -84,23 +89,45 @@ setPlaces(parsedPlaces);
       setLoading(true);
       setError(null);
 
-      console.log('📤 Creando lugar:', placeData);
+      console.log('📤 Creando lugar con datos:', placeData);
+      
+      // Validar datos requeridos
+      if (!placeData.name?.trim()) {
+        throw new Error('El nombre del lugar es requerido');
+      }
+      
+      if (!placeData.description?.trim()) {
+        throw new Error('La descripción del lugar es requerida');
+      }
       
       const response = await api.post<{ message: string; place: Place }>('/api/places', placeData);
       
-      console.log('✅ Lugar creado:', response.data);
+      console.log('✅ Respuesta del servidor al crear:', response.data);
+      
+      if (!response.data.place) {
+        throw new Error('No se recibió el lugar creado del servidor');
+      }
+      
+      const newPlace = parsePlaceData(response.data.place);
+      
+      // Actualizar la lista de lugares
+      setPlaces(prevPlaces => [...prevPlaces, newPlace]);
       
       toast({
         title: '✅ Lugar creado',
         description: 'El lugar se ha creado exitosamente',
       });
       
-      return response.data.place;
+      return newPlace;
     } catch (err: any) {
       const errorMessage = err?.response?.data?.message || err?.message || 'Error al crear el lugar';
       setError(errorMessage);
       
-      console.error('❌ Error creando lugar:', err);
+      console.error('❌ Error creando lugar:', {
+        error: err,
+        requestData: placeData,
+        response: err?.response?.data
+      });
       
       toast({
         title: '❌ Error',
@@ -128,12 +155,25 @@ setPlaces(parsedPlaces);
       
       console.log('✅ Lugar actualizado:', response.data);
       
+      if (!response.data.place) {
+        throw new Error('No se recibió el lugar actualizado del servidor');
+      }
+      
+      const updatedPlace = parsePlaceData(response.data.place);
+      
+      // Actualizar la lista de lugares
+      setPlaces(prevPlaces => 
+        prevPlaces.map(place => 
+          place.id === placeId ? updatedPlace : place
+        )
+      );
+      
       toast({
         title: '✅ Lugar actualizado',
         description: 'El lugar se ha actualizado exitosamente',
       });
       
-      return response.data.place;
+      return updatedPlace;
     } catch (err: any) {
       const errorMessage = err?.response?.data?.message || err?.message || 'Error al actualizar el lugar';
       setError(errorMessage);
@@ -165,6 +205,9 @@ setPlaces(parsedPlaces);
       const response = await api.delete<{ message: string; deletedPlace: Place }>(`/api/places/${placeId}`);
       
       console.log('✅ Lugar eliminado:', response.data);
+      
+      // Actualizar la lista de lugares
+      setPlaces(prevPlaces => prevPlaces.filter(place => place.id !== placeId));
       
       toast({
         title: '✅ Lugar eliminado',

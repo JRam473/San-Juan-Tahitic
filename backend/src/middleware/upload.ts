@@ -1,24 +1,35 @@
-// middleware/upload.ts
+// middleware/upload.ts - VERSIÓN MEJORADA
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import { Request } from 'express';
+
+// Crear directorio uploads si no existe
+const uploadsDir = 'uploads/';
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('📁 Directorio uploads creado:', uploadsDir);
+}
 
 const storage = multer.diskStorage({
   destination: (req: Request, file: Express.Multer.File, cb) => {
-    cb(null, 'uploads/');
+    cb(null, uploadsDir);
   },
   filename: (req: Request, file: Express.Multer.File, cb) => {
+    // Usar el nombre original pero sanitizado
+    const originalName = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_');
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    cb(null, 'place-' + uniqueSuffix + '-' + originalName);
   }
 });
 
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  // Permitir imágenes y PDFs
-  if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else if (file.mimetype === 'application/pdf') {
     cb(null, true);
   } else {
-    cb(new Error('Solo se permiten imágenes y archivos PDF'));
+    cb(new Error('Tipo de archivo no permitido. Solo imágenes y PDFs son permitidos.'));
   }
 };
 
@@ -26,14 +37,10 @@ export const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB (aumentado para PDFs)
+    fileSize: 10 * 1024 * 1024 // 10MB
   }
 });
 
 // Middlewares específicos
-export const uploadImage = upload.single('image');
-export const uploadPDF = upload.single('pdf');
-export const uploadMultiple = upload.fields([
-  { name: 'image', maxCount: 1 },
-  { name: 'pdf', maxCount: 1 }
-]);
+export const uploadImage = upload.single('file'); // Cambiado a 'file'
+export const uploadPDF = upload.single('file');   // Cambiado a 'file'
