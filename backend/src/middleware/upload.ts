@@ -5,7 +5,9 @@ import fs from 'fs';
 import { Request } from 'express';
 
 // Crear directorio uploads si no existe
-const uploadsDir = 'uploads/';
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+
+// Crear directorio uploads si no existe
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
   console.log('📁 Directorio uploads creado:', uploadsDir);
@@ -16,10 +18,11 @@ const storage = multer.diskStorage({
     cb(null, uploadsDir);
   },
   filename: (req: Request, file: Express.Multer.File, cb) => {
-    // Usar el nombre original pero sanitizado
-    const originalName = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_');
+    const originalName = path.parse(file.originalname).name;
+    const extension = path.extname(file.originalname);
+    const sanitizedName = originalName.replace(/[^a-zA-Z0-9]/g, '_');
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'place-' + uniqueSuffix + '-' + originalName);
+    cb(null, 'place-' + uniqueSuffix + '-' + sanitizedName + extension);
   }
 });
 

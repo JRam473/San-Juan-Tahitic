@@ -66,6 +66,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapLocationSelector } from '@/components/admin/MapLocationSelector';
+import { toast } from '@/hooks/use-toast';
 
 // Función para construir la URL completa de la imagen
 const buildImageUrl = (imagePath: string | null | undefined): string => {
@@ -300,6 +301,8 @@ export const AdminPlaces = () => {
     createPlace,
     updatePlace,
     deletePlace,
+    uploadPlaceImage, // ← Asegúrate de incluir estas
+    uploadPlacePDF,   // ← dos funciones
     refetch,
     clearError
   } = useAdminPlaces();
@@ -391,53 +394,111 @@ export const AdminPlaces = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  if (!validateForm()) return;
 
-    setIsSubmitting(true);
-    try {
-      // Preparar datos del lugar
-      const placeData: PlaceFormData = {
-        name: formData.name,
-        description: formData.description,
-        category: formData.category,
-        location: formData.location,
-      };
+  setIsSubmitting(true);
+  try {
+    // 1. Preparar datos básicos del lugar (sin archivos)
+    const placeData: PlaceFormData = {
+      name: formData.name,
+      description: formData.description,
+      category: formData.category,
+      location: formData.location,
+    };
 
-      // Para una implementación real, aquí subirías los archivos
-      // Por ahora, usamos nombres temporales para la demo
-      if (files.image) {
-        placeData.image_url = `/uploads/${files.image.name}`;
-      } else if (editingPlace?.image_url) {
-        placeData.image_url = editingPlace.image_url;
-      }
+    console.log('📤 Enviando datos del lugar:', placeData);
 
-      if (files.pdf) {
-        placeData.pdf_url = `/uploads/${files.pdf.name}`;
-      } else if (editingPlace?.pdf_url) {
-        placeData.pdf_url = editingPlace.pdf_url;
-      }
+    let savedPlace: Place;
 
-      console.log('📤 Enviando datos del lugar:', placeData);
-
-      if (editingPlace) {
-        await updatePlace(editingPlace.id, placeData);
-      } else {
-        await createPlace(placeData);
-      }
-
-      setIsDialogOpen(false);
-      resetForm();
-      await refetch();
-    } catch (err) {
-      console.error('Error al guardar el lugar:', err);
-    } finally {
-      setIsSubmitting(false);
+    // 2. Crear o actualizar el lugar (sin archivos)
+    if (editingPlace) {
+      savedPlace = await updatePlace(editingPlace.id, placeData);
+    } else {
+      savedPlace = await createPlace(placeData);
     }
-  };
 
+    console.log('✅ Lugar guardado:', savedPlace);
+
+    // 3. Subir archivos DESPUÉS de crear/actualizar el lugar
+    let uploadErrors: string[] = [];
+
+    if (files.image && savedPlace) {
+      try {
+        console.log('🖼️ Subiendo imagen...', {
+          placeId: savedPlace.id,
+          fileName: files.image.name,
+          fileSize: files.image.size,
+          fileType: files.image.type
+        });
+        
+        const imageResult = await uploadPlaceImage(savedPlace.id, files.image);
+        console.log('✅ Imagen subida correctamente:', imageResult);
+      } catch (imageError: any) {
+        console.error('❌ Error subiendo imagen:', imageError);
+        uploadErrors.push(`Imagen: ${imageError.message}`);
+      }
+    }
+
+    if (files.pdf && savedPlace) {
+      try {
+        console.log('📄 Subiendo PDF...', {
+          placeId: savedPlace.id,
+          fileName: files.pdf.name,
+          fileSize: files.pdf.size,
+          fileType: files.pdf.type
+        });
+        
+        const pdfResult = await uploadPlacePDF(savedPlace.id, files.pdf);
+        console.log('✅ PDF subido correctamente:', pdfResult);
+      } catch (pdfError: any) {
+        console.error('❌ Error subiendo PDF:', pdfError);
+        uploadErrors.push(`PDF: ${pdfError.message}`);
+      }
+    }
+
+    // 4. Mostrar advertencias si hubo errores en uploads
+    if (uploadErrors.length > 0) {
+      toast({
+        title: '⚠️ Advertencia',
+        description: `Lugar guardado pero con errores en archivos: ${uploadErrors.join(', ')}`,
+        variant: 'destructive',
+      });
+    } else if (files.image || files.pdf) {
+      toast({
+        title: '✅ Éxito completo',
+        description: editingPlace ? 'Lugar y archivos actualizados correctamente' : 'Lugar y archivos creados correctamente',
+      });
+    } else {
+      toast({
+        title: '✅ Éxito',
+        description: editingPlace ? 'Lugar actualizado correctamente' : 'Lugar creado correctamente',
+      });
+    }
+
+    // 5. Cerrar diálogo y limpiar
+    setIsDialogOpen(false);
+    resetForm();
+    await refetch();
+
+  } catch (err: any) {
+    console.error('❌ Error crítico al guardar el lugar:', {
+      error: err,
+      message: err?.message,
+      response: err?.response?.data
+    });
+    
+    toast({
+      title: '❌ Error crítico',
+      description: err?.message || 'Error al guardar el lugar principal',
+      variant: 'destructive',
+    });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
   const handleEdit = (place: Place) => {
     setEditingPlace(place);
     setFormData({

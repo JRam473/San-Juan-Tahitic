@@ -238,14 +238,100 @@ export const useAdminPlaces = () => {
     setError(null);
   }, []);
 
-  return {
-    places,
-    loading,
-    error,
-    createPlace,
-    updatePlace,
-    deletePlace,
-    refetch: fetchPlaces,
-    clearError,
-  };
+
+
+
+/**
+ * Subir imagen de un lugar
+ */
+const uploadPlaceImage = useCallback(async (placeId: string, imageFile: File) => {
+  try {
+    console.log('🚀 Iniciando upload de imagen:', {
+      placeId,
+      fileName: imageFile.name,
+      fileSize: imageFile.size,
+      fileType: imageFile.type
+    });
+
+    const formData = new FormData();
+    formData.append('file', imageFile);
+
+    const response = await api.post<{ 
+      message: string; 
+      imageUrl: string; 
+      place: Place 
+    }>(`/api/places/${placeId}/upload-image`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    console.log('📨 Respuesta del servidor (imagen):', response.data);
+    return response.data;
+  } catch (err: any) {
+    console.error('💥 Error en uploadPlaceImage:', {
+      error: err,
+      status: err?.response?.status,
+      data: err?.response?.data,
+      message: err?.message
+    });
+    
+    const errorMessage = err?.response?.data?.message || err?.message || 'Error al subir la imagen';
+    throw new Error(errorMessage);
+  }
+}, []);
+
+/**
+ * Subir PDF de un lugar
+ */
+const uploadPlacePDF = useCallback(async (placeId: string, pdfFile: File) => {
+  try {
+    console.log('🚀 Iniciando upload de PDF:', {
+      placeId,
+      fileName: pdfFile.name,
+      fileSize: pdfFile.size,
+      fileType: pdfFile.type
+    });
+
+    const formData = new FormData();
+    formData.append('file', pdfFile);
+
+    const response = await api.post<{ 
+      message: string; 
+      pdfUrl: string; 
+      place: Place 
+    }>(`/api/places/${placeId}/upload-pdf`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    console.log('📨 Respuesta del servidor (PDF):', response.data);
+    return response.data;
+  } catch (err: any) {
+    console.error('💥 Error en uploadPlacePDF:', {
+      error: err,
+      status: err?.response?.status,
+      data: err?.response?.data,
+      message: err?.message
+    });
+    
+    const errorMessage = err?.response?.data?.message || err?.message || 'Error al subir el PDF';
+    throw new Error(errorMessage);
+  }
+}, []);
+
+// Agrega estas funciones al return del hook
+return {
+  places,
+  loading,
+  error,
+  createPlace,
+  updatePlace,
+  deletePlace,
+  uploadPlaceImage, // ← Agregar esta línea
+  uploadPlacePDF,   // ← Agregar esta línea
+  refetch: fetchPlaces,
+  clearError,
+};
 };
