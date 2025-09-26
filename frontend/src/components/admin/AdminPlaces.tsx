@@ -214,7 +214,7 @@ const PlaceCard = ({
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="w-40 bg-white/90 backdrop-blur-sm border border-white/20 shadow-lg">
                   <DropdownMenuItem onClick={() => onEdit(place)}>
                     <Edit className="h-4 w-4 mr-2" />
                     Editar
@@ -307,6 +307,7 @@ export const AdminPlaces = () => {
     clearError
   } = useAdminPlaces();
 
+  
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingPlace, setEditingPlace] = useState<Place | null>(null);
@@ -366,33 +367,34 @@ export const AdminPlaces = () => {
     }));
   };
 
-  const validateForm = (): boolean => {
-    const errors: Record<string, string> = {};
+const validateForm = (): boolean => {
+  const errors: Record<string, string> = {};
 
-    if (!formData.name?.trim()) {
-      errors.name = 'El nombre es requerido';
-    }
+  if (!formData.name?.trim()) {
+    errors.name = 'El nombre es requerido';
+  }
 
-    if (!formData.description?.trim()) {
-      errors.description = 'La descripción es requerida';
-    }
+  if (!formData.description?.trim()) {
+    errors.description = 'La descripción es requerida';
+  }
 
-    if (!formData.category) {
-      errors.category = 'La categoría es requerida';
-    }
+  if (!formData.category) {
+    errors.category = 'La categoría es requerida';
+  }
 
-    if (!formData.location?.trim()) {
-      errors.location = 'La ubicación es requerida';
-    }
+  if (!formData.location?.trim()) {
+    errors.location = 'La ubicación es requerida';
+  }
 
-    // Para crear nuevo lugar, la imagen es requerida
-    if (!editingPlace && !files.image) {
-      errors.image = 'La imagen es requerida para crear un nuevo lugar';
-    }
+  // Para crear nuevo lugar, la imagen es requerida
+  // Para editar, la imagen no es requerida (puede mantener la existente)
+  if (!editingPlace && !files.image) {
+    errors.image = 'La imagen es requerida para crear un nuevo lugar';
+  }
 
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
+  setFormErrors(errors);
+  return Object.keys(errors).length === 0;
+};
 
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -403,10 +405,10 @@ const handleSubmit = async (e: React.FormEvent) => {
   try {
     // 1. Preparar datos básicos del lugar (sin archivos)
     const placeData: PlaceFormData = {
-      name: formData.name,
-      description: formData.description,
+      name: formData.name?.trim(),
+      description: formData.description?.trim(),
       category: formData.category,
-      location: formData.location,
+      location: formData.location?.trim(),
     };
 
     console.log('📤 Enviando datos del lugar:', placeData);
@@ -415,27 +417,25 @@ const handleSubmit = async (e: React.FormEvent) => {
 
     // 2. Crear o actualizar el lugar (sin archivos)
     if (editingPlace) {
-      savedPlace = await updatePlace(editingPlace.id, placeData);
+      // Para edición, NO enviar image_url y pdf_url ya que se manejan por separado
+      const { image_url, pdf_url, ...updateData } = placeData;
+      savedPlace = await updatePlace(editingPlace.id, updateData);
     } else {
-      savedPlace = await createPlace(placeData);
+      // Para creación, puedes enviar image_url/pdf_url si quieres, pero mejor manejarlos por separado
+      const { image_url, pdf_url, ...createData } = placeData;
+      savedPlace = await createPlace(createData);
     }
 
     console.log('✅ Lugar guardado:', savedPlace);
 
-    // 3. Subir archivos DESPUÉS de crear/actualizar el lugar
+    // 3. Subir archivos SOLO si hay archivos nuevos seleccionados
     let uploadErrors: string[] = [];
 
     if (files.image && savedPlace) {
       try {
-        console.log('🖼️ Subiendo imagen...', {
-          placeId: savedPlace.id,
-          fileName: files.image.name,
-          fileSize: files.image.size,
-          fileType: files.image.type
-        });
-        
-        const imageResult = await uploadPlaceImage(savedPlace.id, files.image);
-        console.log('✅ Imagen subida correctamente:', imageResult);
+        console.log('🖼️ Subiendo imagen...');
+        await uploadPlaceImage(savedPlace.id, files.image);
+        console.log('✅ Imagen subida correctamente');
       } catch (imageError: any) {
         console.error('❌ Error subiendo imagen:', imageError);
         uploadErrors.push(`Imagen: ${imageError.message}`);
@@ -444,32 +444,21 @@ const handleSubmit = async (e: React.FormEvent) => {
 
     if (files.pdf && savedPlace) {
       try {
-        console.log('📄 Subiendo PDF...', {
-          placeId: savedPlace.id,
-          fileName: files.pdf.name,
-          fileSize: files.pdf.size,
-          fileType: files.pdf.type
-        });
-        
-        const pdfResult = await uploadPlacePDF(savedPlace.id, files.pdf);
-        console.log('✅ PDF subido correctamente:', pdfResult);
+        console.log('📄 Subiendo PDF...');
+        await uploadPlacePDF(savedPlace.id, files.pdf);
+        console.log('✅ PDF subido correctamente');
       } catch (pdfError: any) {
         console.error('❌ Error subiendo PDF:', pdfError);
         uploadErrors.push(`PDF: ${pdfError.message}`);
       }
     }
 
-    // 4. Mostrar advertencias si hubo errores en uploads
+    // 4. Mostrar resultados
     if (uploadErrors.length > 0) {
       toast({
         title: '⚠️ Advertencia',
-        description: `Lugar guardado pero con errores en archivos: ${uploadErrors.join(', ')}`,
+        description: `Lugar ${editingPlace ? 'actualizado' : 'creado'} pero con errores en archivos`,
         variant: 'destructive',
-      });
-    } else if (files.image || files.pdf) {
-      toast({
-        title: '✅ Éxito completo',
-        description: editingPlace ? 'Lugar y archivos actualizados correctamente' : 'Lugar y archivos creados correctamente',
       });
     } else {
       toast({
@@ -487,34 +476,37 @@ const handleSubmit = async (e: React.FormEvent) => {
     console.error('❌ Error crítico al guardar el lugar:', {
       error: err,
       message: err?.message,
-      response: err?.response?.data
+      response: err?.response?.data,
+      status: err?.response?.status
     });
     
     toast({
-      title: '❌ Error crítico',
-      description: err?.message || 'Error al guardar el lugar principal',
+      title: '❌ Error',
+      description: err?.response?.data?.message || err?.message || 'Error al guardar el lugar',
       variant: 'destructive',
     });
   } finally {
     setIsSubmitting(false);
   }
 };
-  const handleEdit = (place: Place) => {
-    setEditingPlace(place);
-    setFormData({
-      name: place.name || '',
-      description: place.description || '',
-      category: place.category || '',
-      location: place.location || '',
-      image_url: place.image_url || '',
-      pdf_url: place.pdf_url || ''
-    });
-    setFiles({
-      image: null,
-      pdf: null
-    });
-    setIsDialogOpen(true);
-  };
+const handleEdit = (place: Place) => {
+  setEditingPlace(place);
+  setFormData({
+    name: place.name || '',
+    description: place.description || '',
+    category: place.category || '',
+    location: place.location || '',
+    image_url: place.image_url || '',
+    pdf_url: place.pdf_url || ''
+  });
+  // IMPORTANTE: No resetear files a null, mantenerlos como están
+  // para que no intente subir archivos vacíos
+  setFiles({
+    image: null,  // Esto está bien - significa "no hay archivo nuevo"
+    pdf: null     // Esto está bien - significa "no hay archivo nuevo"
+  });
+  setIsDialogOpen(true);
+};
 
   const handleDelete = async () => {
     if (!editingPlace) return;

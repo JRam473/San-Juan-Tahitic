@@ -14,7 +14,6 @@ export interface Place {
   average_rating: number;
   total_ratings: number;
   created_at: string;
-  updated_at: string;
 }
 
 interface PlaceFormData {
@@ -144,53 +143,73 @@ export const useAdminPlaces = () => {
   /**
    * Actualizar un lugar existente
    */
-  const updatePlace = useCallback(async (placeId: string, placeData: PlaceFormData) => {
-    try {
-      setLoading(true);
-      setError(null);
+// hooks/useAdminPlaces.ts - MEJORAR updatePlace
+const updatePlace = useCallback(async (placeId: string, placeData: PlaceFormData) => {
+  try {
+    setLoading(true);
+    setError(null);
 
-      console.log('🔄 Actualizando lugar:', placeId, placeData);
-      
-      const response = await api.put<{ message: string; place: Place }>(`/api/places/${placeId}`, placeData);
-      
-      console.log('✅ Lugar actualizado:', response.data);
-      
-      if (!response.data.place) {
-        throw new Error('No se recibió el lugar actualizado del servidor');
+    console.log('🔄 Frontend: Actualizando lugar:', { placeId, placeData });
+
+    // Limpiar datos undefined/null
+    const cleanData: any = {};
+    Object.keys(placeData).forEach(key => {
+      if (placeData[key as keyof PlaceFormData] !== undefined && 
+          placeData[key as keyof PlaceFormData] !== null) {
+        cleanData[key] = placeData[key as keyof PlaceFormData];
       }
-      
-      const updatedPlace = parsePlaceData(response.data.place);
-      
-      // Actualizar la lista de lugares
-      setPlaces(prevPlaces => 
-        prevPlaces.map(place => 
-          place.id === placeId ? updatedPlace : place
-        )
-      );
-      
-      toast({
-        title: '✅ Lugar actualizado',
-        description: 'El lugar se ha actualizado exitosamente',
-      });
-      
-      return updatedPlace;
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || err?.message || 'Error al actualizar el lugar';
-      setError(errorMessage);
-      
-      console.error('❌ Error actualizando lugar:', err);
-      
-      toast({
-        title: '❌ Error',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-      
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
+    });
+
+    console.log('🧹 Datos limpios para enviar:', cleanData);
+
+    const response = await api.put<{ message: string; place: Place }>(
+      `/api/places/${placeId}`, 
+      cleanData
+    );
+    
+    console.log('✅ Frontend: Lugar actualizado:', response.data);
+    
+    if (!response.data.place) {
+      throw new Error('No se recibió el lugar actualizado del servidor');
     }
-  }, [toast]);
+    
+    const updatedPlace = parsePlaceData(response.data.place);
+    
+    // Actualizar la lista de lugares
+    setPlaces(prevPlaces => 
+      prevPlaces.map(place => 
+        place.id === placeId ? updatedPlace : place
+      )
+    );
+    
+    toast({
+      title: '✅ Lugar actualizado',
+      description: 'El lugar se ha actualizado exitosamente',
+    });
+    
+    return updatedPlace;
+  } catch (err: any) {
+    console.error('❌ Frontend: Error actualizando lugar:', {
+      error: err,
+      status: err?.response?.status,
+      data: err?.response?.data,
+      message: err?.message
+    });
+    
+    const errorMessage = err?.response?.data?.message || err?.message || 'Error al actualizar el lugar';
+    setError(errorMessage);
+    
+    toast({
+      title: '❌ Error',
+      description: errorMessage,
+      variant: 'destructive',
+    });
+    
+    throw new Error(errorMessage);
+  } finally {
+    setLoading(false);
+  }
+}, [toast]);
 
   /**
    * Eliminar un lugar
